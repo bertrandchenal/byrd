@@ -1,0 +1,19 @@
+networks:
+  web:
+    hosts:
+      - web1.example.com
+      - web2.example.com
+  db:
+    hosts:
+      - db1.example.com
+      - db2.example.com
+
+tasks:
+  health:
+    desc: Get basic health info
+    run: uptime
+
+  time:
+    desc: Print current time (on local machine)
+    local: date -Iseconds
+    once: true

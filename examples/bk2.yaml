@@ -1,0 +1,19 @@
+tasks:
+  echo:
+    desc: Simple echo
+    local: echo "{what}"
+    once: true
+    env:
+      what: "ECHO!"
+
+  echo-var:
+    desc: Echo an env variable
+    local: echo {my_var}
+    once: true
+    
+  both:
+    desc: Run both tasks
+    multi:
+      - task: echo
+        export: my_var
+      - task: echo-var
