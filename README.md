@@ -46,8 +46,9 @@ $ bk -c examples/bk1.yaml health web
 INFO:2018-08-01 23:14:25: Load config examples/bk1.yaml
 INFO:2018-08-01 23:14:25: RUN health ON web1.example.com
  23:14:26 up 7 days,  6:28,  4 users,  load average: 0,30, 0,26, 0,22
- INFO:2018-08-01 23:14:26: RUN health ON web2.example.com
-  23:14:26 up 7 days,  6:28,  4 users,  load average: 0,30, 0,26, 0,22```
+INFO:2018-08-01 23:14:26: RUN health ON web2.example.com
+  23:14:26 up 7 days,  6:28,  4 users,  load average: 0,30, 0,26, 0,22
+```
 
 
 ## Multi-tasks
