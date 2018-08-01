@@ -1,9 +1,14 @@
 # Baker
 
 Baker is a simple deployment tool based on Fabric. The config file
-format is inspired (but not identical) by
-[Sup](https://github.com/pressly/sup), but contrary to sup, Baker is
-meant to be invoked from any OS (aka Windows support).
+format is inspired by [Sup](https://github.com/pressly/sup) (but not
+identical). In contrast to sup, Baker is meant to be invoked from any
+OS (aka Windows support). This project is in alpha stage, please
+handle carefully.
+
+The name Baker is a reference to
+[Chet Baker](https://en.wikipedia.org/wiki/Chet_Baker).
+
 
 ## Basic Example
 
