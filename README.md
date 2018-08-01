@@ -2,14 +2,14 @@
 
 Baker is a simple deployment tool based on Fabric. The config file
 format is inspired (but not identical) by
-[Sup](https://github.com/pressly/sup), but contrary to sup Baker is
-meant to be invoked from any os.
+[Sup](https://github.com/pressly/sup), but contrary to sup, Baker is
+meant to be invoked from any OS (aka Windows support).
 
 ## Basic Example
 
 By default baker will use `bk.yaml` as config file:
 
-```yaml
+```
 networks:
   web:
     hosts:
@@ -32,21 +32,22 @@ tasks:
 ```
 
 
-Based on the above file, one can run the following operations:
+Based on the above file, one can run the following operations (imagine
+that the INFO lines are colored):
 
-```bash
-$ bk time
-INFO:2018-08-01 22:35:48: Load config bk.yaml
-INFO:2018-08-01 22:35:48: RUN time locally
-2018-08-01T22:45:33+02:00
-
-$ bk health web
-INFO:2018-08-01 22:40:39: Load config bk.yaml
-INFO:2018-08-01 22:40:39: RUN health ON web1.example.com
- 22:40:39 up 7 days,  5:55,  4 users,  load average: 0,33, 0,28, 0,31
-INFO:2018-08-01 22:40:39: RUN health ON web2.example.com
-  22:40:40 up 7 days,  5:55,  4 users,  load average: 0,30, 0,27, 0,30
 ```
+$ bk -c examples/bk1.yaml
+INFO:2018-08-01 23:14:05: Load config examples/bk1.yaml
+[23:14:05] bch@aldebaran:~/dev/baker$ bk -c examples/bk1.yaml time
+INFO:2018-08-01 23:14:21: Load config examples/bk1.yaml
+INFO:2018-08-01 23:14:21: RUN time locally
+2018-08-01T23:14:21+02:00
+$ bk -c examples/bk1.yaml health web
+INFO:2018-08-01 23:14:25: Load config examples/bk1.yaml
+INFO:2018-08-01 23:14:25: RUN health ON web1.example.com
+ 23:14:26 up 7 days,  6:28,  4 users,  load average: 0,30, 0,26, 0,22
+ INFO:2018-08-01 23:14:26: RUN health ON web2.example.com
+  23:14:26 up 7 days,  6:28,  4 users,  load average: 0,30, 0,26, 0,22```
 
 
 ## Multi-tasks
@@ -56,7 +57,7 @@ and how to assemble tasks.
 
 ```
 tasks:
-  echo-one:
+  echo:
     desc: Simple echo
     local: echo "{what}"
     once: true
@@ -71,9 +72,9 @@ tasks:
   both:
     desc: Run both tasks
     multi:
-      - task: echo-one
-        export: my_var
-      - task: echo-two
+      - task: echo
+        export: my_var  # tells baker to use task ouput to set my_var
+      - task: echo-var
 ```
 
 We can then do the following:
