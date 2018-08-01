@@ -10,6 +10,8 @@ The name Baker is a reference to
 [Chet Baker](https://en.wikipedia.org/wiki/Chet_Baker).
 
 
+# Quickstart
+
 ## Basic Example
 
 By default baker will use `bk.yaml` as config file:
@@ -99,3 +101,10 @@ WHAT?
 INFO:2018-08-01 23:01:15: RUN echo-var locally
 WHAT?
 ```
+
+# Roadmap
+
+- Document: assert, send and auth
+- Add tests
+- Implement: import of other config file, add a contrib directory with
+  ready-made tasks for common operations
