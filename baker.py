@@ -172,6 +172,8 @@ class Command(Node):
     def setup(cls, values, path):
         if path:
             values['name'] = path[-1]
+        if 'desc' not in values:
+            values['desc'] = values['name']
         return values
 
 class Task(Node):
@@ -179,13 +181,22 @@ class Task(Node):
         '*': Command,
     }
 
+class LoadNode(Node):
+    _children = {
+        'file': Atom,
+        'as': Atom,
+    }
+
+class LoadList(Node):
+    _children = [LoadNode]
+
 class ConfigRoot(Node):
     _children = {
         'networks': Network,
         'tasks': Task,
         'auth': Auth,
         'env': EnvNode,
-        # 'load': ? -> todo allows to load other files and merge them
+        'load': LoadList,
     }
 
 
@@ -205,7 +216,6 @@ class Env(ChainMap):
             msg = 'Unable to format "%s", positional argument not supported'
             logger.error(msg)
             sys.exit()
-
 
 def get_passphrase(key_path):
     service = 'SSH private key'
@@ -335,6 +345,7 @@ def run_task(task, host, cli, parent_env=None):
     env.update({
         'task_desc': env.fmt(task.desc),
         'task_name': task.name,
+        'host': host,
     })
 
     if task.local:
@@ -413,6 +424,43 @@ def base_cli(args=None):
     return ObjectDict(vars(cli))
 
 
+def load(path, prefix=None):
+    load_sections = ('networks', 'tasks', 'auth', 'env')
+
+    logger.info('Load config %s' % path)
+    cfg = yaml_load(open(path))
+    cfg = ConfigRoot.parse(cfg)
+
+    # Define useful defaults
+    cfg.networks = cfg.networks or {}
+    cfg.tasks = cfg.tasks or {}
+
+    if prefix:
+        fn = lambda x: '/'.join(prefix + [x])
+        # Apply prefix
+        for section in load_sections:
+            if not cfg.get(section):
+                continue
+            items = cfg[section].items()
+            cfg[section] = {fn(k): v for k, v in items}
+
+    # Recursive load
+    if cfg.load:
+        cfg_path = os.path.dirname(path)
+        for item in cfg.load:
+            if item.get('as'):
+                child_prefix = item['as']
+            else:
+                child_prefix, _ = os.path.splitext(item.file)
+            child_path = os.path.join(cfg_path, item.file)
+            child_cfg = load(child_path, child_prefix.split('/'))
+
+            for section in load_sections:
+                if not cfg.get(section):
+                    cfg[section] = {}
+                cfg[section].update(child_cfg.get(section, {}))
+    return cfg
+
 def main():
     cli = base_cli()
     if cli.verbose:
@@ -421,14 +469,8 @@ def main():
         logger.info('Log level set to: %s' % level)
 
     # Load config
-    logger.info('Load config %s' % cli.config)
-    cfg = yaml_load(open(cli.config))
-    cfg = ConfigRoot.parse(cfg)
+    cfg = load(cli.config)
     cli.cfg = cfg
-
-    # Define useful defaults
-    cfg.networks = cfg.networks or {}
-    cfg.tasks = cfg.tasks or {}
 
     # Make sure we don't have overlap between hosts and tasks
     items = list(cfg.networks) + list(cfg.tasks)
