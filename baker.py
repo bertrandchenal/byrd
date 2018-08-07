@@ -95,7 +95,7 @@ def spellcheck(objdict, word):
     candidates = objdict.get('_candidates')
     if not candidates:
         candidates = gen_candidates(list(objdict))
-        objdict['_candidates'] = candidates
+        objdict._candidates = candidates
 
     msg = '"%s" not found in %s' % (word, objdict._path)
     matches = spell(candidates, word)
@@ -109,20 +109,22 @@ class ObjectDict(dict):
     Simple objet sub-class that allows to transform a dict into an
     object, like: `ObjectDict({'ham': 'spam'}).ham == 'spam'`
     """
+    _meta = {}
+
     def __getattr__(self, key):
+        if key.startswith('_'):
+            return ObjectDict._meta[id(self), key]
+
         if key in self:
             return self[key]
         else:
             return None
 
     def __setattr__(self, key, value):
-        self[key] = value
-
-    def __iter__(self):
-        for key in self.keys():
-            if key.startswith('_'):
-                continue
-            yield key
+        if key.startswith('_'):
+            ObjectDict._meta[id(self), key] = value
+        else:
+            self[key] = value
 
 class Node:
 
@@ -179,8 +181,8 @@ class Node:
 
     @classmethod
     def setup(cls, values, path):
-        if isinstance(values, dict):
-            values['_path'] = '->'.join(path)
+        if isinstance(values, ObjectDict):
+            values._path = '->'.join(path)
         return values
 
 
@@ -239,6 +241,7 @@ class Command(Node):
             values['name'] = path[-1]
         if 'desc' not in values:
             values['desc'] = values['name']
+        super().setup(values, path)
         return values
 
 class Task(Node):
@@ -497,7 +500,7 @@ def load(path, prefix=None):
             if not cfg.get(section):
                 continue
             items = cfg[section].items()
-            cfg[section] = {fn(k): v for k, v in items if not k.startswith('_')}
+            cfg[section] = {fn(k): v for k, v in items}
 
     # Recursive load
     if cfg.load:
