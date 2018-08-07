@@ -1,0 +1,5 @@
+tasks:
+  time:
+    desc: Print current time (on local machine)
+    local: date -Iseconds
+    once: true
