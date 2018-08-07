@@ -10,7 +10,6 @@ import sys
 
 from fabric import Connection, Config
 from invoke import run
-from tanker import yaml_load
 import invoke
 import yaml
 
@@ -269,7 +268,7 @@ class ConfigRoot(Node):
 class Env(ChainMap):
 
     def __init__(self, *dicts):
-        return super().__init__(*filter(bool, dicts))
+        return super().__init__(*filter(lambda x: x is not None, dicts))
 
     def fmt(self, string):
         try:
@@ -285,6 +284,7 @@ class Env(ChainMap):
         except IndexError as exc:
             msg = 'Unable to format "%s", positional argument not supported'
             abort(msg)
+
 
 def get_passphrase(key_path):
     service = 'SSH private key'
@@ -410,12 +410,12 @@ def run_task(task, host, cli, parent_env=None):
         # OS env
         os.environ,
     ).new_child()
+
     env.update({
         'task_desc': env.fmt(task.desc),
         'task_name': task.name,
         'host': host or '',
     })
-
     if task.local:
         res = run_local(task, env, cli)
     else:
@@ -472,26 +472,6 @@ def run_batch(task, hosts, cli, env=None):
     return res
 
 
-def base_cli(args=None):
-    parser = argparse.ArgumentParser()
-    parser.add_argument('names',  nargs='*',
-                        help='Hosts and commands to run them on')
-    parser.add_argument('-c', '--config', default='bk.yaml',
-                        help='Config file')
-    parser.add_argument('-r', '--run', nargs='*', default=[],
-                        help='Run custom task')
-    parser.add_argument('-d', '--dry-run', action='store_true',
-                        help='Do not run actual tasks, just print them')
-    parser.add_argument('-e', '--env', nargs='*', default=[],
-                        help='Add value to execution environment '
-                        '(ex: -e foo=bar "name=John Doe")')
-    parser.add_argument('-s', '--sudo', default='auto',
-                        help='Enable sudo (auto|yes|no')
-    parser.add_argument('-v', '--verbose', action='count',
-                        default=0, help='Increase verbosity')
-    cli = parser.parse_args(args=args)
-    return ObjectDict(vars(cli))
-
 def abort(msg):
     logger.error(msg)
     sys.exit(1)
@@ -536,6 +516,28 @@ def load(path, prefix=None):
                 cfg[section].update(child_cfg.get(section, {}))
     return cfg
 
+
+def base_cli(args=None):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('names',  nargs='*',
+                        help='Hosts and commands to run them on')
+    parser.add_argument('-c', '--config', default='bk.yaml',
+                        help='Config file')
+    parser.add_argument('-r', '--run', nargs='*', default=[],
+                        help='Run custom task')
+    parser.add_argument('-d', '--dry-run', action='store_true',
+                        help='Do not run actual tasks, just print them')
+    parser.add_argument('-e', '--env', nargs='*', default=[],
+                        help='Add value to execution environment '
+                        '(ex: -e foo=bar "name=John Doe")')
+    parser.add_argument('-s', '--sudo', default='auto',
+                        help='Enable sudo (auto|yes|no')
+    parser.add_argument('-v', '--verbose', action='count',
+                        default=0, help='Increase verbosity')
+    cli = parser.parse_args(args=args)
+    return ObjectDict(vars(cli))
+
+
 def main():
     cli = base_cli()
     if cli.verbose:
@@ -551,7 +553,6 @@ def main():
     items = list(cfg.networks) + list(cfg.tasks)
     msg = 'Name collision between tasks and networks'
     assert len(set(items)) == len(items), msg
-
 
     # Build task list
     tasks = []
