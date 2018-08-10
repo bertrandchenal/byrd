@@ -127,7 +127,7 @@ def spellcheck(objdict, word):
     matches = spell(candidates, word)
     if matches:
         msg += ', try: %s' % ' or '.join(matches)
-    abort(msg)
+    raise BakerException(msg)
 
 
 class ObjectDict(dict):
@@ -157,7 +157,7 @@ class Node:
     @staticmethod
     def fail(path, kind):
         msg = 'Error while parsing config: expecting "%s" while parsing "%s"'
-        abort(msg % (kind, '->'.join(path)))
+        raise BakerException(msg % (kind, '->'.join(path)))
 
     @classmethod
     def parse(cls, cfg, path=tuple()):
@@ -190,7 +190,7 @@ class Node:
                         matches = spell(candidates, key)
                         if matches:
                             msg += ', try: %s' % ' or '.join(matches)
-                        abort(msg)
+                        raise BakerException(msg)
 
                 for name, child_class in children.items():
                     if name not in cfg:
@@ -359,7 +359,7 @@ def connect(host, auth):
         private_key_file = auth.ssh_private_key
         if not os.path.exists(auth.ssh_private_key):
             msg = 'Private key file "%s" not found' % auth.ssh_private_key
-            abort(msg)
+            raise BakerException(msg)
         password = get_passphrase(auth.ssh_private_key)
     else:
         password = get_password(host)
@@ -527,7 +527,7 @@ def run_remote(task, host, env, cli):
                             rem_file = posixpath.join(rem_dir, f)
                             sftp.put(os.path.abspath(rel_f), rem_file)
     else:
-        abort('Unable to run task "%s"' % task.name)
+        raise BakerException('Unable to run task "%s"' % task.name)
 
     if res:
         logger.debug(TAB + TAB.join(res.stdout.splitlines()))
@@ -575,7 +575,7 @@ def run_task(task, host, cli, parent_env=None):
         if ok:
             logger.info('Assert ok')
         else:
-            abort('Assert "%s" failed!' % assert_)
+            raise BakerException('Assert "%s" failed!' % assert_)
     return res
 
 
@@ -633,7 +633,7 @@ def load_cfg(path, prefix=None):
         cfg = yaml_load(open(path))
         cfg = ConfigRoot.parse(cfg)
     else:
-        abort('Config file "%s" not found' % path)
+        raise BakerException('Config file "%s" not found' % path)
 
     # Define useful defaults
     cfg.networks = cfg.networks or ObjectDict()
@@ -742,19 +742,20 @@ def get_hosts_and_tasks(cli, cfg):
 
 
 def main():
-    cli = load_cli()
-    if not cli.no_color:
-        enable_logging_color()
-    cli.verbose = max(0, 1 + cli.verbose - cli.quiet)
-    level = ['WARNING', 'INFO', 'DEBUG'][min(cli.verbose, 2)]
-    log_handler.setLevel(level)
-    logger.setLevel(level)
-
+    cli = None
     try:
+        cli = load_cli()
+        if not cli.no_color:
+            enable_logging_color()
+        cli.verbose = max(0, 1 + cli.verbose - cli.quiet)
+        level = ['WARNING', 'INFO', 'DEBUG'][min(cli.verbose, 2)]
+        log_handler.setLevel(level)
+        logger.setLevel(level)
+
         for task in cli.tasks:
             run_batch(task, cli.hosts, cli, cli.env)
     except BakerException as e:
-        if cli.verbose > 2:
+        if cli and cli.verbose > 2:
             raise
         abort(str(e))
 
