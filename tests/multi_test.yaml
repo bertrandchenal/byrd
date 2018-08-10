@@ -1,0 +1,16 @@
+cli: '-c examples/multi.yaml all'
+output: |
+  Load config examples/multi.yaml
+  one
+  print('one')
+  one
+  two
+  print('two')
+  two
+  three
+  print('three')
+  three
+  concat
+  import os
+  print(os.environ['one'], os.environ['two'], os.environ['_'])
+  one two three

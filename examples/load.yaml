@@ -1,0 +1,6 @@
+load:
+  - file: network_only.yaml
+    as: net
+tasks:
+  echo-host:
+    local: echo {host}

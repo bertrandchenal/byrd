@@ -1,0 +1,7 @@
+tasks:
+  print:
+    desc: Print module type
+    python: |-
+      import os
+      print(type(os))
+    once: true

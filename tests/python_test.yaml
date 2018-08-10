@@ -1,0 +1,7 @@
+cli: '-c examples/python.yaml print'
+output: |
+  Load config examples/python.yaml
+  Print module type
+  import os
+  print(type(os))
+  <class 'module'>

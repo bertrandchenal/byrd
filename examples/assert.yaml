@@ -1,0 +1,5 @@
+tasks:
+  one:
+    python: print('one')
+    assert: "stdout == 'one'"
+    once: true

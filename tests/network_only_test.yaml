@@ -1,0 +1,2 @@
+cli: "--dry-run -c examples/network_only.yaml"
+output: Load config examples/network_only.yaml

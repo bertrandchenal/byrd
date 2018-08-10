@@ -104,7 +104,7 @@ WHAT?
 
 # Roadmap
 
-- Document: assert, send dry-run and auth
+- Document: assert, send dry-run, python and auth
 - Add tests
 - Implement: import of other config file, add a contrib directory with
   ready-made tasks for common operations
