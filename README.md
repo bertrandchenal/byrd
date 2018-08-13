@@ -1,6 +1,6 @@
 # Baker
 
-Baker is a simple deployment tool based on Fabric. The config file
+Baker is a simple deployment tool based on paramiko. The config file
 format is inspired by [Sup](https://github.com/pressly/sup) (but not
 identical). In contrast to sup, Baker is meant to be invoked from any
 OS (aka Windows support). This project is in alpha stage, please
