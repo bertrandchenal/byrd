@@ -487,7 +487,10 @@ def run_remote(task, host, env, cli):
     env.update({
         'host': host,
     })
-    client = connect(host, cli.cfg.auth)
+    if cli.dry_run:
+        client = None
+    else:
+        client = connect(host, cli.cfg.auth)
     if task.run:
         cmd = env.fmt(task.run)
         logger.info(env.fmt('{host}: {task_desc}'))
