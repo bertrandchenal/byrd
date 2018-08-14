@@ -168,7 +168,45 @@ key. This passphrase will be saved in your OS keyring (thanks to
 [the keyring module](https://github.com/jaraco/keyring).)
 
 
+## Load other config files
+
+The top-level directive `load` allows to import other config files and
+merge them with the current one, so with `bk.yaml` containing:
+
+```
+load:
+  - file: network.yaml
+    as: net
+tasks:
+  echo-host:
+    local: echo {host}
+```
+
+and `network.yaml` containing:
+
+```
+networks:
+  web:
+    hosts:
+      - web1.example.com
+      - web2.example.com
+```
+
+We can now run:
+
+```
+$ bk net/web echo-host --dry-run'
+INFO:2018-08-14 11:27:33: Load config bk.yaml
+INFO:2018-08-14 11:27:33: Load config network.yaml
+INFO:2018-08-14 11:27:33: echo-host
+INFO:2018-08-14 11:27:33: [DRY-RUN] echo web1.example.com
+INFO:2018-08-14 11:27:33: echo-host
+INFO:2018-08-14 11:27:33: [DRY-RUN] echo web2.example.com
+```
+
+
 # Roadmap
 
-- Implement: add a contrib directory with ready-made tasks for common
-  operations, add password-based auth, add per-network auth.
+- add a contrib directory with ready-made tasks for common
+  operations
+- add password-based auth, add per-network auth.
