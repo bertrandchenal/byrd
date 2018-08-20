@@ -586,9 +586,9 @@ def run_batch(task, hosts, cli, env=None):
     '''
     Run one task on a list of hosts
     '''
-    env = Env(task.get('env'), env)
     out = None
     export_env = {}
+    env = Env(export_env, task.get('env'), env)
 
     if task.get('multi'):
         for multi in task.multi:
@@ -599,12 +599,11 @@ def run_batch(task, hosts, cli, env=None):
             if network:
                 spellcheck(cli.cfg.networks, network)
                 hosts = cli.cfg.networks[network].hosts
-            child_env = multi.get('env', {}).copy()
+            child_env = Env(multi.get('env', {}), env)
             for k, v in child_env.items():
                 # env wrap-around!
-                child_env[k] = env.fmt(child_env[k])
-            run_env = Env(export_env, child_env, env)
-            out = run_batch(sub_task, hosts, cli, run_env)
+                child_env[k] = child_env.fmt(child_env[k])
+            out = run_batch(sub_task, hosts, cli, child_env)
             out = out.decode() if isinstance(out, bytes) else out
             export_env['_'] = out
             if multi.export:
