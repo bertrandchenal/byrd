@@ -384,7 +384,7 @@ def run_local(cmd, env, cli):
     cmd = env.fmt(cmd)
     logger.info(env.fmt('{task_desc}'))
     if cli.dry_run:
-        logger.info('[DRY-RUN] ' + cmd)
+        logger.info('[dry-run] ' + cmd)
         return None
     logger.debug(TAB + TAB.join(cmd.splitlines()))
     process = subprocess.Popen(
@@ -407,7 +407,7 @@ def run_python(task, env, cli):
     code = task.python
     logger.info(env.fmt('{task_desc}'))
     if cli.dry_run:
-        logger.info('[DRY-RUN] ' + code)
+        logger.info('[dry-run] ' + code)
         return None
     logger.debug(TAB + TAB.join(code.splitlines()))
     cmd = 'python -c "import sys;exec(sys.stdin.read())"'
@@ -471,7 +471,11 @@ def run_helper(client, cmd, env=None, in_buff=None, sudo=False):
 
     if sudo:
         assert not in_buff, 'in_buff and sudo can not be combined'
-        chan.exec_command('sudo -s')
+        if isinstance(sudo, str):
+            sudo_cmd = 'sudo -u %s -s' % sudo
+        else:
+            sudo_cmd = 'sudo -s'
+        chan.exec_command(sudo_cmd)
         in_buff = cmd
     else:
         chan.exec_command(cmd)
@@ -508,21 +512,26 @@ def run_remote(task, host, env, cli):
         client = connect(host, cli.cfg.auth)
     if task.run:
         cmd = env.fmt(task.run)
-        prefix = task.sudo and '[SUDO]' or ''
+        prefix = ''
+        if task.sudo:
+            if task.sudo is True:
+                prefix = '[sudo] '
+            else:
+                 prefix = '[sudo as %s] ' % task.sudo
         msg = prefix + '{host}: {task_desc}'
         logger.info(env.fmt(msg))
         logger.debug(TAB + TAB.join(cmd.splitlines()))
         if cli.dry_run:
-            logger.info('[DRY-RUN] ' + cmd)
+            logger.info('[dry-run] ' + cmd)
         else:
             res = run_helper(client, cmd, env=env, sudo=task.sudo)
 
     elif task.send:
         local_path = env.fmt(task.send)
         remote_path = env.fmt(task.to)
-        logger.info(f'[SEND] {local_path} -> {host}:{remote_path}')
+        logger.info(f'[send] {local_path} -> {host}:{remote_path}')
         if cli.dry_run:
-            logger.info('[DRY-RUN]')
+            logger.info('[dry-run]')
             return
         else:
             with client.open_sftp() as sftp:
@@ -599,16 +608,20 @@ def run_batch(task, hosts, cli, env=None):
     env = Env(export_env, task.get('env'), env)
 
     if task.get('multi'):
-        sudo = task.sudo
+        parent_sudo = task.sudo
         for multi in task.multi:
-            task = multi.task
+            task_name = multi.task
             if task:
-                spellcheck(cli.cfg.tasks, task)
-                sub_task = cli.cfg.tasks[task]
+                # _cfg contain "local" config wrt the task
+                siblings = task._cfg.tasks
+                spellcheck(siblings, task_name)
+                sub_task = siblings[task_name]
+                sudo = multi.sudo or sub_task.sudo or parent_sudo
             else:
+                # reify a task out of attributes
                 sub_task = Task.parse(multi)
-            if multi.sudo is not None or sudo is not None:
-                sub_task.sudo = multi.sudo or sudo
+                sudo = sub_task.sudo or parent_sudo
+            sub_task.sudo = sudo
             network = multi.get('network')
             if network:
                 spellcheck(cli.cfg.networks, network)
@@ -655,14 +668,20 @@ def load_cfg(path, prefix=None):
     cfg.networks = cfg.networks or ObjectDict()
     cfg.tasks = cfg.tasks or ObjectDict()
 
+    # Create backrefs between tasks to the local config
+    if cfg.get('tasks'):
+        items = cfg['tasks'].items()
+        for k, v in items:
+            v._cfg = ObjectDict(cfg.copy())
+
     if prefix:
-        fn = lambda x: '/'.join(prefix + [x])
+        key_fn = lambda x: '/'.join(prefix + [x])
         # Apply prefix
         for section in load_sections:
             if not cfg.get(section):
                 continue
             items = cfg[section].items()
-            cfg[section] = {fn(k): v for k, v in items}
+            cfg[section] = {key_fn(k): v for k, v in items}
 
     # Recursive load
     if cfg.load:
@@ -676,8 +695,6 @@ def load_cfg(path, prefix=None):
             child_cfg = load_cfg(child_path, child_prefix.split('/'))
 
             for section in load_sections:
-                if not cfg.get(section):
-                    cfg[section] = {}
                 cfg[section].update(child_cfg.get(section, {}))
     return cfg
 

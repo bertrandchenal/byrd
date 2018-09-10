@@ -207,6 +207,7 @@ INFO:2018-08-14 11:27:33: [DRY-RUN] echo web2.example.com
 
 # Roadmap
 
-- add a contrib directory with ready-made tasks for common
+- Add doc about load directive (and namespacing)
+- Add a contrib directory with ready-made tasks for common
   operations
-- add password-based auth, add per-network auth.
+- Add password-based auth, add per-network auth.
