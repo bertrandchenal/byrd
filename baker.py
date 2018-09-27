@@ -540,7 +540,8 @@ def run_remote(task, host, env, cli):
                 else:
                     for root, subdirs, files in os.walk(local_path):
                         rel_dir = os.path.relpath(root, local_path)
-                        rem_dir = posixpath.join(remote_path, rel_dir)
+                        rel_dirs = os.path.split(rel_dir)
+                        rem_dir = posixpath.join(remote_path, *rel_dirs)
                         run_helper(client, 'mkdir -p {}'.format(rem_dir))
                         for f in files:
                             rel_f = os.path.join(root, f)
