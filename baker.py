@@ -137,6 +137,11 @@ class ObjectDict(dict):
     """
     _meta = {}
 
+    def copy(self):
+        res = ObjectDict(super().copy())
+        ObjectDict._meta[id(res)] = ObjectDict._meta.get(id(self), {}).copy()
+        return res
+
     def __getattr__(self, key):
         if key.startswith('_'):
             return ObjectDict._meta[id(self), key]
@@ -563,6 +568,7 @@ def run_task(task, host, cli, parent_env=None):
 
     # Prepare environment
     env = Env(
+        {},
         # Env from parent task
         parent_env,
         # Env on the task itself
@@ -607,12 +613,11 @@ def run_batch(task, hosts, cli, env=None):
     out = None
     export_env = {}
     env = Env(export_env, task.get('env'), env)
-
     if task.get('multi'):
         parent_sudo = task.sudo
         for multi in task.multi:
             task_name = multi.task
-            if task:
+            if task_name:
                 # _cfg contain "local" config wrt the task
                 siblings = task._cfg.tasks
                 spellcheck(siblings, task_name)
@@ -627,7 +632,7 @@ def run_batch(task, hosts, cli, env=None):
             if network:
                 spellcheck(cli.cfg.networks, network)
                 hosts = cli.cfg.networks[network].hosts
-            child_env = Env(multi.get('env', {}), env)
+            child_env = Env({}, multi.get('env', {}), env)
             for k, v in child_env.items():
                 # env wrap-around!
                 child_env[k] = child_env.fmt(child_env[k])
@@ -659,7 +664,7 @@ def load_cfg(path, prefix=None):
     load_sections = ('networks', 'tasks', 'auth', 'env')
 
     if os.path.isfile(path):
-        logger.info('Load config %s' % path)
+        logger.debug('Load config %s' % path)
         cfg = yaml_load(open(path))
         cfg = ConfigRoot.parse(cfg)
     else:
