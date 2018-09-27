@@ -433,7 +433,8 @@ def run_python(task, env, cli):
     logger.debug(TAB + TAB.join(code.splitlines()))
     cmd = 'python -c "import sys;exec(sys.stdin.read())"'
     if task.sudo:
-        cmd = 'sudo -- ' + cmd
+        user = 'root' if task.sudo is True else task.sudo
+        cmd = 'sudo -u {} -- {}'.format(user, cmd)
     process = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
