@@ -45,11 +45,11 @@ that the INFO lines are colored):
 ```
 $ bk time
 INFO:2018-08-01 23:14:05: Load config bk.yaml
-$ bk  time
+$ bk  time -v
 INFO:2018-08-01 23:14:21: Load config bk.yaml
 INFO:2018-08-01 23:14:21: Print current time (on local machine)
 2018-08-01T23:14:21+02:00
-$ bk health web
+$ bk health web -v
 INFO:2018-08-01 23:14:25: Load config bk.yaml
 INFO:2018-08-01 23:14:25: web1.example.com: Get basic health info
  23:14:26 up 7 days,  6:28,  4 users,  load average: 0,30, 0,26, 0,22
@@ -99,13 +99,13 @@ tasks:
 We can then do the following:
 
 ```
-$ bk both
+$ bk both -v
 INFO:2018-08-01 23:00:37: Load config bk.yaml
 INFO:2018-08-01 23:00:37: Simple echo 
 ECHO!
 INFO:2018-08-01 23:00:37: Echo an env variable
 ECHO!
-$ bk both -e what="WHAT?"
+$ bk both -e what="WHAT?" -v
 INFO:2018-08-01 23:01:15: Load config bk.yaml
 INFO:2018-08-01 23:01:15: Simple echo
 WHAT?
@@ -132,7 +132,7 @@ Python code can be added with a python directive:
 
 Environement is used to format command, but it is also used to define
 the initial environement of command (duh!), so you can access it with
-the os module (for example ´print(os.envoron['MY_VAR']`). It works for
+the os module (for example `print(os.envoron['MY_VAR']`). It works for
 python directive but also for local and remote commands.
 
 ## Assert
@@ -195,7 +195,7 @@ networks:
 We can now run:
 
 ```
-$ bk net/web echo-host --dry-run'
+$ bk net/web echo-host --dry-run' -v
 INFO:2018-08-14 11:27:33: Load config bk.yaml
 INFO:2018-08-14 11:27:33: Load config network.yaml
 INFO:2018-08-14 11:27:33: echo-host
