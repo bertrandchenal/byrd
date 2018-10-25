@@ -1,8 +1,9 @@
+import os
 from shlex import shlex
 
 import pytest
 
-from baker import run_batch, load_cli
+from baker import run_batch, load_cli, Env
 
 
 def test_all_conf(test_cfg, log_buff):
@@ -15,8 +16,14 @@ def test_all_conf(test_cfg, log_buff):
         args = list(lexer)
     cli = load_cli(args)
 
+    base_env = Env(
+        cli.env,
+        cli.cfg.get('env'),
+        os.environ,
+    )
+
     for task in cli.tasks:
-        run_batch(task, cli.hosts, cli, cli.env)
+        run_batch(task, cli.hosts, cli, base_env)
 
     actual_lines = log_buff.getvalue().splitlines()
     actual_lines = [l.strip() for l in filter(None, actual_lines)]

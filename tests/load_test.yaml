@@ -3,6 +3,6 @@ output: |
   Load config examples/load.yaml
   Load config examples/network_only.yaml
   echo-host
-  [DRY-RUN] echo web1.example.com
+  [dry-run] echo web1.example.com
   echo-host
-  [DRY-RUN] echo web2.example.com
+  [dry-run] echo web2.example.com

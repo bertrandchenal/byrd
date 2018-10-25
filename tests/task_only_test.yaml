@@ -2,4 +2,4 @@ cli: "--dry-run -c examples/task_only.yaml time"
 output: |
   Load config examples/task_only.yaml
   Print current time (on local machine)
-  [DRY-RUN] date -Iseconds
+  [dry-run] date -Iseconds

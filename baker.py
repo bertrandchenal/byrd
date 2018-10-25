@@ -552,6 +552,8 @@ def run_remote(task, host, env, cli):
         local_path = env.fmt(task.send)
         remote_path = env.fmt(task.to)
         logger.info(f'[send] {local_path} -> {host}:{remote_path}')
+        if not os.path.exists(local_path):
+            BakerException('Path "%s" not found'  % local_path)
         if cli.dry_run:
             logger.info('[dry-run]')
             return
@@ -559,7 +561,7 @@ def run_remote(task, host, env, cli):
             with client.open_sftp() as sftp:
                 if os.path.isfile(local_path):
                     sftp.put(os.path.abspath(local_path), remote_path)
-                else:
+                elif os.path.isdir(local_path):
                     for root, subdirs, files in os.walk(local_path):
                         rel_dir = os.path.relpath(root, local_path)
                         rel_dirs = os.path.split(rel_dir)
@@ -569,6 +571,9 @@ def run_remote(task, host, env, cli):
                             rel_f = os.path.join(root, f)
                             rem_file = posixpath.join(rem_dir, f)
                             sftp.put(os.path.abspath(rel_f), rem_file)
+                else:
+                    msg = 'Unexpected path "%s" (not a file, not a directory)'
+                    BakerException(msg % local_path)
     else:
         raise BakerException('Unable to run task "%s"' % task.name)
 
@@ -697,7 +702,7 @@ def load_cfg(path, prefix=None):
         key_fn = lambda x: '/'.join(prefix + [x])
         # Apply prefix
         for section in load_sections:
-            if not cfg.get(section):
+            if not section in cfg:
                 continue
             items = cfg[section].items()
             cfg[section] = {key_fn(k): v for k, v in items}
@@ -714,6 +719,8 @@ def load_cfg(path, prefix=None):
             child_cfg = load_cfg(child_path, child_prefix.split('/'))
 
             for section in load_sections:
+                if not section in cfg:
+                    continue
                 cfg[section].update(child_cfg.get(section, {}))
     return cfg
 
