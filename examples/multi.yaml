@@ -13,6 +13,10 @@ tasks:
       import os
       print(os.environ['one'], os.environ['two'], os.environ['_'])
     once: true
+  nested:
+    multi:
+      - python: print('nested')
+        once: true
   all:
     multi:
       - task: one
@@ -21,3 +25,4 @@ tasks:
         export: two
       - task: three
       - task: concat
+      - task: nested

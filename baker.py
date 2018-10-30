@@ -200,13 +200,14 @@ class Node:
                 for name, child_class in children.items():
                     if name not in cfg:
                         continue
-                    res[name] = child_class.parse(cfg.pop(name), path + (name,))
+                    res[name] = child_class.parse(cfg[name], path + (name,))
 
         elif type_name == 'list':
             if not isinstance(cfg, list):
                 cls.fail(path, type_name)
             child_class = children[0]
-            res = [child_class.parse(c, path+ ('[]',)) for c in cfg]
+            res = [child_class.parse(c, path+ ('[%s]' % pos,))
+                   for pos, c in enumerate(cfg)]
 
         else:
             if not isinstance(cfg, cls._type):
@@ -280,6 +281,9 @@ class Task(Node):
         super().setup(values, path)
         return values
 
+# Multi can also accept any task attribute:
+Multi._children.update(Task._children)
+
 
 class TaskGroup(Node):
     _children = {
@@ -303,9 +307,6 @@ class ConfigRoot(Node):
         'env': EnvNode,
         'load': LoadList,
     }
-
-# Multi can also accept any task attribute:
-Multi._children.update(Task._children)
 
 
 
@@ -611,12 +612,12 @@ def run_task(task, host, cli, parent_env=None):
         res = run_remote(task, host, env, cli)
 
     if task.get('assert'):
-        env.update({
+        eval_env = {
             'stdout': res.stdout.strip(),
             'stderr': res.stderr.strip(),
-        })
+        }
         assert_ = env.fmt(task['assert'])
-        ok = eval(assert_, dict(env))
+        ok = eval(assert_, eval_env)
         if ok:
             logger.info('Assert ok')
         else:
@@ -635,7 +636,7 @@ def run_batch(task, hosts, cli, global_env=None):
     parent_env = Env(export_env, task_env, global_env)
     if task.get('multi'):
         parent_sudo = task.sudo
-        for multi in task.multi:
+        for pos, multi in enumerate(task.multi):
             task_name = multi.task
             if task_name:
                 # _cfg contain "local" config wrt the task
@@ -646,7 +647,9 @@ def run_batch(task, hosts, cli, global_env=None):
             else:
                 # reify a task out of attributes
                 sub_task = Task.parse(multi)
+                sub_task._path = '%s->[%s]' % (task._path, pos)
                 sudo = sub_task.sudo or parent_sudo
+
             sub_task.sudo = sudo
             network = multi.get('network')
             if network:
@@ -664,11 +667,13 @@ def run_batch(task, hosts, cli, global_env=None):
         res = None
         if task.once and (task.local or task.python):
             res = run_task(task, None, cli, parent_env)
-        else:
+        elif hosts:
             for host in hosts:
                 res = run_task(task, host, cli, parent_env)
                 if task.once:
                     break
+        else:
+            logger.warning('Nothing to do for task "%s"' % task._path)
         out = res and res.stdout.strip() or ''
     return out
 
