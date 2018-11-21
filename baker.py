@@ -316,15 +316,14 @@ class Env(ChainMap):
         return super().__init__(*filter(lambda x: x is not None, dicts))
 
     def fmt_env(self, child_env):
-        if not isinstance(child_env, str):
-            new_env = {}
-            for key, val in child_env.items():
-                # env wrap-around!
-                new_val = self.fmt(val)
-                if new_val == val:
-                    continue
-                new_env[key] = new_val
-            return Env(new_env, child_env)
+        new_env = {}
+        for key, val in child_env.items():
+            # env wrap-around!
+            new_val = self.fmt(val)
+            if new_val == val:
+                continue
+            new_env[key] = new_val
+        return Env(new_env, child_env)
 
     def fmt_string(self, string):
         try:

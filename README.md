@@ -69,6 +69,27 @@ INFO:2018-08-13 14:36:05: [DRY-RUN] uptime
 ```
 
 
+## Environment
+
+Each command is auto-formatted based on current environment. When Baker
+is invoked, the basic environment is initialized with the one from
+parent process (literally `os.environ`). It is then augmented by the
+top level `env` directive of the config file and then command-line
+`-e` arguments are added.
+
+The command formatting use the string formatting tool from python, see
+[Python documentation](https://docs.python.org/3.4/library/string.html#format-examples)
+for example.  In particular, you have to use a brace character (`{` or
+`}`) in a command, you can double it (`{{` or `}}`) to escape
+formatting.
+
+Each task can also declare extra key-value pairs in the `env`
+directive, and those are kept when sub-tasks are ran. Siblings tasks
+are not impacted. Those values are also formatted, this allows you to
+rename environment variables (especially useful when running a
+sub-task that expect a variable to be set up)
+
+
 ## Multi-tasks
 
 The following example shows how Baker handles environment variables,
@@ -130,9 +151,9 @@ Python code can be added with a python directive:
     once: true
 ```
 
-Environement is used to format command, but it is also used to define
-the initial environement of command (duh!), so you can access it with
-the os module (for example `print(os.envoron['MY_VAR']`). It works for
+Environment is used to format command, but it is also used to define
+the initial environment of command (duh!), so you can access it with
+the os module (for example `print(os.environ['MY_VAR']`). It works for
 python directive but also for local and remote commands.
 
 ## Assert
