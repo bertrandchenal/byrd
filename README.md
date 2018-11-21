@@ -79,7 +79,7 @@ top level `env` directive of the config file and then command-line
 
 The command formatting use the string formatting tool from python, see
 [Python documentation](https://docs.python.org/3.4/library/string.html#format-examples)
-for example.  In particular, you have to use a brace character (`{` or
+for examples.  In particular, you have to use a brace character (`{` or
 `}`) in a command, you can double it (`{{` or `}}`) to escape
 formatting.
 
