@@ -1,0 +1,7 @@
+tasks:
+  create-venv:
+    desc: Create python venv
+    run: |
+      if ! -e {venv_path}
+      then python3 -m venv {venv_path}
+      fi

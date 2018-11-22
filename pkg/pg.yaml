@@ -1,0 +1,19 @@
+tasks:
+  createuser:
+    desc: Add postgres user
+    sudo: postgres
+    run: |
+      if ! psql -c "SELECT usename FROM pg_user" | grep {pg_user} &> /dev/null
+      then createuser {pg_user} -d
+      fi
+  createdb:
+    desc: Create a new db
+    run: |
+      if ! psql -l | grep {db_name} &> /dev/null
+      then createdb {db_name}
+      fi
+
+  alter-passwd:
+    desc: Alter user password
+    sudo: postgres
+    run: psql -c "ALTER USER {pg_user} WITH PASSWORD '{pg_password}'"

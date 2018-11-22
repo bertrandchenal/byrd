@@ -1,0 +1,59 @@
+tasks:
+  # Creation, deletion and mgmt of VM
+  create-vm:
+     desc: Create a new azure VM
+     local: >
+       az vm create -n "bio-pm-prove-{vm_name}" -g "{ressource_group}"
+       --image UbuntuLTS  --admin-username deploy --ssh-key-value deploy_rsa.pub
+       --data-disk-sizes-gb 100 --public-ip-address "" --subnet "{subnet}"
+     once: true
+  delete-vm-only:
+     desc: Delete azure VM
+     local: az vm delete -n "bio-pm-prove-{vm_name}"  -g "RG-DC-BUS-QUANTS" -y
+     once: true
+  show-disk:
+     desc: Read disk id
+     local: >-
+       az vm show -g "RG-DC-BUS-QUANTS" --query "{query}"
+       -n "bio-pm-prove-{vm_name}"
+     once: true
+  delete-disk:
+     desc: Delete azure disk
+     local: az disk delete -n "{disk_name}" -g "RG-DC-BUS-QUANTS" -y
+     once: true
+  delete-vm:
+     desc: Delete both VM and attached disk
+     multi:
+      - task: az-show-disk
+        export: os_disk
+        env:
+          query: "storageProfile.osDisk.name"
+      - task: az-show-disk
+        export: data_disk
+        env:
+          query: "storageProfile.dataDisks[0].name"
+      - task: az-delete-vm-only
+      - task: az-delete-disk
+        env:
+          disk_name: "{data_disk}"
+      - task: az-delete-disk
+        env:
+          disk_name: "{os_disk}"
+  show-ip:
+     desc: Query azure vm by name for ip
+     local: >
+       az vm list-ip-addresses
+       --query "[?virtualMachine.name=='bio-pm-prove-{vm_name}']
+       .virtualMachine.network.privateIpAddresses[0]"
+     once: true
+  vm-info:
+     desc: Query azure vm by name for info
+     local: az vm list --query "[?name=='bio-pm-prove-{vm_name}']"
+     once: true
+  fix-hosts:
+    desc: "See: https://github.com/Microsoft/WSL/issues/491"
+    run: |
+      if grep -q $(hostname) /etc/hosts
+      then true
+      else sudo sed -i "s/127.0.0.1 localhost/127.0.0.1 localhost $(hostname)/g" /etc/hosts
+      fi

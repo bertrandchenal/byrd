@@ -31,7 +31,8 @@ log_handler.setLevel(logging.INFO)
 log_handler.setFormatter(logging.Formatter(log_fmt))
 logger.addHandler(log_handler)
 
-
+basedir, _ = os.path.split(__file__)
+PKG_DIR = os.path.join(basedir, 'pkg')
 TAB = '\n    '
 
 class BakerException(Exception):
@@ -293,6 +294,7 @@ class TaskGroup(Node):
 class LoadNode(Node):
     _children = {
         'file': Atom,
+        'pkg': Atom,
         'as': Atom,
     }
 
@@ -715,11 +717,14 @@ def load_cfg(path, prefix=None):
     if cfg.load:
         cfg_path = os.path.dirname(path)
         for item in cfg.load:
+            if item.get('file'):
+                child_prefix, _ = os.path.splitext(item.file)
+                child_path = os.path.join(cfg_path, item.file)
+            elif item.get('pkg'):
+                child_prefix, _ = os.path.splitext(item.pkg)
+                child_path = PKG_DIR
             if item.get('as'):
                 child_prefix = item['as']
-            else:
-                child_prefix, _ = os.path.splitext(item.file)
-            child_path = os.path.join(cfg_path, item.file)
             child_cfg = load_cfg(child_path, child_prefix.split('/'))
 
             for section in load_sections:

@@ -1,0 +1,82 @@
+tasks:
+  # Generic tasks
+  bash:
+    desc: Interactive prompt
+    run: "bash"
+  create-dir:
+    desc: Add a new directory
+    run: "mkdir -p {path}"
+  symlink:
+    desc: Create symlink
+    run: |
+      if test ! -e {to}
+      then ln -s {from} {to}
+      fi
+  mount:
+    run: mount | grep ' {path} ' &> /dev/null || mount {path}
+  move:
+    desc: Move a file or directory
+    run: |
+      if test ! -e {to}
+      then mv {from} {to}
+      fi
+  copy:
+    desc: Copy a file or directory
+    run: |
+      if test -f {from}
+      then cp {from} {to}
+      else cp -Tr {from} {to}
+      fi
+  remove:
+    desc: Remove (-r) path
+    run: "rm -r {path}"
+  chown:
+    desc: Chown a file or directory
+    run: "chown -R {user}. {path}"
+  chmod:
+    desc: Chmod a file or directory
+    run: "chmod -R {mode} {path}"
+  apt-install:
+    desc: Run apt install
+    run: apt update && apt install -y {packages}
+    sudo: true
+  systemctl:
+    desc: Call systemctl
+    run: systemctl {action} {service}
+    sudo: true
+  send:
+    desc: Send a file or a directory
+    send: "{send}"
+    to: "{to}"
+  sudo-send:
+    desc: Combine send & sudo-move
+    multi:
+      - task: send
+        env:
+          to: "/tmp/{tmppath}"
+      - task: copy
+        sudo: true
+        env:
+          from: "/tmp/{tmppath}"
+      - task: remove
+        env:
+          path: "/tmp/{tmppath}"
+  parted:
+    desc: Create primary partition && mkfs
+    sudo: true
+    run: |
+      if test ! -e {device}1
+      then
+      parted {device} -a optimal --script mklabel gpt mkpart primary 0% 100%
+      sleep 1
+      mkfs -t ext4 {device}1
+      fi
+
+  append-line:
+    desc: Append line to file
+    run: >-
+      grep {guard} {file} &> /dev/null
+      || echo {line} >> {file}
+  add-user:
+    desc: Add a new user
+    run: id {user} || sudo adduser {user} --disabled-login --gecos ""
