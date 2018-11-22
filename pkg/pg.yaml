@@ -7,13 +7,18 @@ tasks:
       then createuser {pg_user} -d
       fi
   createdb:
-    desc: Create a new db
-    run: |
-      if ! psql -l | grep {db_name} &> /dev/null
-      then createdb {db_name}
-      fi
-
+    desc: Create a new db for default user
+    multi:
+      - task: createdb-with-owner
+    env:
+      db_owner: "{ssh_user}"
   alter-passwd:
     desc: Alter user password
     sudo: postgres
     run: psql -c "ALTER USER {pg_user} WITH PASSWORD '{pg_password}'"
+  createdb-with-owner:
+    desc: Create a new db with a specific owner
+    run: |
+      if ! psql -l | grep {db_name} &> /dev/null
+      then createdb -O {db_owner} {db_name}
+      fi

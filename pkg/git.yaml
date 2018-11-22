@@ -8,5 +8,3 @@ tasks:
   pull:
     desc: Update codebase
     run: cd src/prove && git pull
-    env:
-      ssh_user: prove

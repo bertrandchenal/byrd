@@ -3,19 +3,19 @@ tasks:
   create-vm:
      desc: Create a new azure VM
      local: >
-       az vm create -n "bio-pm-prove-{vm_name}" -g "{ressource_group}"
-       --image UbuntuLTS  --admin-username deploy --ssh-key-value deploy_rsa.pub
-       --data-disk-sizes-gb 100 --public-ip-address "" --subnet "{subnet}"
+       az vm create -n "{vm_name}" -g "{ressource_group}"
+       --image UbuntuLTS  --admin-username {vm_admin} --ssh-key-value {ssh_pubkey}
+       --data-disk-sizes-gb {vm_disk_size} --public-ip-address "" --subnet "{subnet}"
      once: true
   delete-vm-only:
      desc: Delete azure VM
-     local: az vm delete -n "bio-pm-prove-{vm_name}"  -g "RG-DC-BUS-QUANTS" -y
+     local: az vm delete -n "{vm_name}"  -g "RG-DC-BUS-QUANTS" -y
      once: true
   show-disk:
      desc: Read disk id
      local: >-
        az vm show -g "RG-DC-BUS-QUANTS" --query "{query}"
-       -n "bio-pm-prove-{vm_name}"
+       -n "{vm_name}"
      once: true
   delete-disk:
      desc: Delete azure disk
@@ -43,12 +43,12 @@ tasks:
      desc: Query azure vm by name for ip
      local: >
        az vm list-ip-addresses
-       --query "[?virtualMachine.name=='bio-pm-prove-{vm_name}']
+       --query "[?virtualMachine.name=='{vm_name}']
        .virtualMachine.network.privateIpAddresses[0]"
      once: true
   vm-info:
      desc: Query azure vm by name for info
-     local: az vm list --query "[?name=='bio-pm-prove-{vm_name}']"
+     local: az vm list --query "[?name=='{vm_name}']"
      once: true
   fix-hosts:
     desc: "See: https://github.com/Microsoft/WSL/issues/491"

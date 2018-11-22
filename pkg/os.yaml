@@ -71,7 +71,6 @@ tasks:
       sleep 1
       mkfs -t ext4 {device}1
       fi
-
   append-line:
     desc: Append line to file
     run: >-
@@ -80,3 +79,44 @@ tasks:
   add-user:
     desc: Add a new user
     run: id {user} || sudo adduser {user} --disabled-login --gecos ""
+  wget:
+    desc: Download a file
+    run: test -f {file} || wget -O {file} {url}
+  unzip:
+    desc: Unzip a zip file
+    run: test -d {dir} || unzip {file} -d {dir}
+  patch:
+    # Do not leave .rej file if patch was already applied.
+    # Thus the "rm" on last line.
+    desc: Patch a file with a specific local diff file
+    run: |
+      patch --ignore-whitespace --reject-file=/dev/null -uN {file} << EOF
+      {diff_string}
+      EOF
+  send-rmcr:
+    desc: Send a file but remove its carriage returns before.
+    multi:
+      - task: send
+      - run: "tr -d '\r' < {to} > {to}-tmp"
+      - task: move
+        env:
+          from: "{to}-tmp"
+  sudo-send-rmcr:
+    desc: Combine send & sudo-move, and remove carriage returns
+    multi:
+      - task: send
+        env:
+          to: "/tmp/{tmppath}"
+      - task: rmcr
+        env:
+          from: "/tmp/{tmppath}"
+        sudo: true
+      - task: remove
+        env:
+          path: "/tmp/{tmppath}"
+  rmcr:
+    desc: remove carriage returns and move file
+    run: "tr -d '\r' < {from} | tee {to} > /dev/null"
+  unlink:
+    desc: remove a symlink
+    run: "test -L {path} && unlink {path}"
