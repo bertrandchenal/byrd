@@ -2,6 +2,7 @@ from getpass import getpass
 from hashlib import md5
 from itertools import chain
 from collections import ChainMap, OrderedDict, defaultdict
+from string import Formatter
 import argparse
 import io
 import logging
@@ -763,6 +764,8 @@ def load_cli(args=None):
                         default=0, help='Decrease verbosity')
     parser.add_argument('-n', '--no-color', action='store_true',
                         help='Disable colored logs')
+    parser.add_argument('-i', '--info', action='store_true',
+                        help='Print info')
     cli = parser.parse_args(args=args)
     cli = ObjectDict(vars(cli))
 
@@ -813,6 +816,40 @@ def get_hosts_and_tasks(cli, cfg):
     return dict(hosts=hosts, tasks=tasks)
 
 
+def info(cli):
+    formatter = Formatter()
+    for name, attr in cli.cfg.tasks.items():
+        kind = 'remote'
+        if attr.python:
+            kind = 'python'
+        elif attr.local:
+            kind = 'local'
+        elif attr.multi:
+            kind = 'multi'
+        elif attr.send:
+            kind = 'send file'
+
+        print(f'{name} [{kind}]:\n\tDescription: {attr.desc}')
+
+        values = []
+        for v in attr.values():
+            if isinstance(v, list):
+                values.extend(v)
+            elif isinstance(v, dict):
+                values.extend(v.values())
+            else:
+                values.append(v)
+        values = filter(lambda x: isinstance(x, str), values)
+        fmt_fields = [i[1] for v in values for i in formatter.parse(v) if i[1]]
+        if fmt_fields:
+            variables = ', '.join(sorted(set(fmt_fields)))
+        else:
+            variables = None
+
+        if variables:
+            print(f'\tVariables: {variables}')
+
+
 def main():
     cli = None
     try:
@@ -823,6 +860,10 @@ def main():
         level = ['WARNING', 'INFO', 'DEBUG'][min(cli.verbose, 2)]
         log_handler.setLevel(level)
         logger.setLevel(level)
+
+        if cli.info:
+            info(cli)
+            return
 
         base_env = Env(
             cli.env, # Highest-priority
