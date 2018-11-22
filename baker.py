@@ -718,13 +718,17 @@ def load_cfg(path, prefix=None):
         cfg_path = os.path.dirname(path)
         for item in cfg.load:
             if item.get('file'):
-                child_prefix, _ = os.path.splitext(item.file)
+                rel_path = item.file
                 child_path = os.path.join(cfg_path, item.file)
             elif item.get('pkg'):
-                child_prefix, _ = os.path.splitext(item.pkg)
-                child_path = PKG_DIR
+                rel_path = item.pkg
+                child_path = os.path.join(PKG_DIR, item.pkg)
+
             if item.get('as'):
                 child_prefix = item['as']
+            else:
+                child_prefix, _ = os.path.splitext(rel_path)
+
             child_cfg = load_cfg(child_path, child_prefix.split('/'))
 
             for section in load_sections:
