@@ -638,32 +638,32 @@ def run_batch(task, hosts, cli, global_env=None):
     parent_env = Env(export_env, task_env, global_env)
     if task.get('multi'):
         parent_sudo = task.sudo
-        for pos, multi in enumerate(task.multi):
-            task_name = multi.task
+        for pos, step in enumerate(task.multi):
+            task_name = step.task
             if task_name:
                 # _cfg contain "local" config wrt the task
                 siblings = task._cfg.tasks
                 spellcheck(siblings, task_name)
                 sub_task = siblings[task_name]
-                sudo = multi.sudo or sub_task.sudo or parent_sudo
+                sudo = step.sudo or sub_task.sudo or parent_sudo
             else:
                 # reify a task out of attributes
-                sub_task = Task.parse(multi)
+                sub_task = Task.parse(step)
                 sub_task._path = '%s->[%s]' % (task._path, pos)
                 sudo = sub_task.sudo or parent_sudo
 
             sub_task.sudo = sudo
-            network = multi.get('network')
+            network = step.get('network')
             if network:
                 spellcheck(cli.cfg.networks, network)
                 hosts = cli.cfg.networks[network].hosts
-            child_env = multi.get('env', {})
+            child_env = step.get('env', {})
             child_env = parent_env.fmt(child_env)
             out = run_batch(sub_task, hosts, cli, Env(child_env, parent_env))
             out = out.decode() if isinstance(out, bytes) else out
             export_env['_'] = out
-            if multi.export:
-                export_env[multi.export] = out
+            if step.export:
+                export_env[step.export] = out
 
     else:
         res = None
