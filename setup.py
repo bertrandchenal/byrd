@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 from setuptools import setup
 from glob import glob
+import os
+
 import baker
 
 long_description = '''
@@ -13,8 +15,8 @@ The name Baker is a reference to Chet Baker.
 '''
 
 description = ('Simple deployment tool based on Paramiko')
-
-pkg_yaml = glob('pkg/*.yaml')
+basedir, _ = os.path.split(__file__)
+pkg_yaml = glob(os.path.join(basedir, 'pkg', '*yaml'))
 
 setup(name='Baker',
       version=baker.__version__,
