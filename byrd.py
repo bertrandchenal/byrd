@@ -25,7 +25,7 @@ __version__ = '0.0'
 
 
 log_fmt = '%(levelname)s:%(asctime).19s: %(message)s'
-logger = logging.getLogger('baker')
+logger = logging.getLogger('byrd')
 logger.setLevel(logging.INFO)
 log_handler = logging.StreamHandler()
 log_handler.setLevel(logging.INFO)
@@ -36,13 +36,13 @@ basedir, _ = os.path.split(__file__)
 PKG_DIR = os.path.join(basedir, 'pkg')
 TAB = '\n    '
 
-class BakerException(Exception):
+class ByrdException(Exception):
     pass
 
-class FmtException(BakerException):
+class FmtException(ByrdException):
     pass
 
-class ExecutionException(BakerException):
+class ExecutionException(ByrdException):
     pass
 
 class RemoteException(ExecutionException):
@@ -129,7 +129,7 @@ def spellcheck(objdict, word):
     matches = spell(candidates, word)
     if matches:
         msg += ', try: %s' % ' or '.join(matches)
-    raise BakerException(msg)
+    raise ByrdException(msg)
 
 
 class ObjectDict(dict):
@@ -164,7 +164,7 @@ class Node:
     @staticmethod
     def fail(path, kind):
         msg = 'Error while parsing config: expecting "%s" while parsing "%s"'
-        raise BakerException(msg % (kind, '->'.join(path)))
+        raise ByrdException(msg % (kind, '->'.join(path)))
 
     @classmethod
     def parse(cls, cfg, path=tuple()):
@@ -197,7 +197,7 @@ class Node:
                         matches = spell(candidates, key)
                         if matches:
                             msg += ', try: %s' % ' or '.join(matches)
-                        raise BakerException(msg)
+                        raise ByrdException(msg)
 
                 for name, child_class in children.items():
                     if name not in cfg:
@@ -387,7 +387,7 @@ def connect(host, auth):
         private_key_file = auth.ssh_private_key
         if not os.path.exists(auth.ssh_private_key):
             msg = 'Private key file "%s" not found' % auth.ssh_private_key
-            raise BakerException(msg)
+            raise ByrdException(msg)
         password = get_passphrase(auth.ssh_private_key)
     else:
         password = get_password(host)
@@ -556,7 +556,7 @@ def run_remote(task, host, env, cli):
         remote_path = env.fmt(task.to)
         logger.info(f'[send] {local_path} -> {host}:{remote_path}')
         if not os.path.exists(local_path):
-            BakerException('Path "%s" not found'  % local_path)
+            ByrdException('Path "%s" not found'  % local_path)
         if cli.dry_run:
             logger.info('[dry-run]')
             return
@@ -576,9 +576,9 @@ def run_remote(task, host, env, cli):
                             sftp.put(os.path.abspath(rel_f), rem_file)
                 else:
                     msg = 'Unexpected path "%s" (not a file, not a directory)'
-                    BakerException(msg % local_path)
+                    ByrdException(msg % local_path)
     else:
-        raise BakerException('Unable to run task "%s"' % task.name)
+        raise ByrdException('Unable to run task "%s"' % task.name)
 
     if res and res.stdout:
         logger.debug(TAB + TAB.join(res.stdout.splitlines()))
@@ -623,7 +623,7 @@ def run_task(task, host, cli, parent_env=None):
         if ok:
             logger.info('Assert ok')
         else:
-            raise BakerException('Assert "%s" failed!' % assert_)
+            raise ByrdException('Assert "%s" failed!' % assert_)
     return res
 
 
@@ -693,7 +693,7 @@ def load_cfg(path, prefix=None):
         cfg = yaml_load(open(path))
         cfg = ConfigRoot.parse(cfg)
     else:
-        raise BakerException('Config file "%s" not found' % path)
+        raise ByrdException('Config file "%s" not found' % path)
 
     # Define useful defaults
     cfg.networks = cfg.networks or ObjectDict()
@@ -743,7 +743,7 @@ def load_cli(args=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('names',  nargs='*',
                         help='Hosts and commands to run them on')
-    parser.add_argument('-c', '--config', default='bk.yaml',
+    parser.add_argument('-c', '--config', default='bd.yaml',
                         help='Config file')
     parser.add_argument('-R', '--run', nargs='*', default=[],
                         help='Run remote task')
@@ -799,7 +799,7 @@ def get_hosts_and_tasks(cli, cfg):
             matches = spell(cfg.networks, name) | spell(cfg.tasks, name)
             if matches:
                 msg += ', try: %s' % ' or '.join(matches)
-            raise BakerException (msg)
+            raise ByrdException (msg)
 
     # Collect custom tasks from cli
     customs = []
@@ -872,7 +872,7 @@ def main():
         )
         for task in cli.tasks:
             run_batch(task, cli.hosts, cli, base_env)
-    except BakerException as e:
+    except ByrdException as e:
         if cli and cli.verbose > 2:
             raise
         abort(str(e))

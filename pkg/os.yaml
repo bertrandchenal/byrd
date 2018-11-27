@@ -77,8 +77,11 @@ tasks:
       grep {guard} {file} &> /dev/null
       || echo {line} >> {file}
   add-user:
-    desc: Add a new user
+    desc: Create a new user
     run: id {user} || sudo adduser {user} --disabled-login --gecos ""
+  add-group:
+    desc: Add group to user
+    run: usermod -a -G {user} {group}
   wget:
     desc: Download a file
     run: test -f {file} || wget -O {file} {url}

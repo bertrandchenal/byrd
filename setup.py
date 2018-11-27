@@ -3,33 +3,33 @@ from setuptools import setup
 from glob import glob
 import os
 
-import baker
+import byrd
 
 long_description = '''
 
-Baker is yet another deployment tool. Baker is a mashup of Paramiko
+Byrd is yet another deployment tool. Byrd is a mashup of Paramiko
 (https://www.paramiko.org/) and the sup config file layout
 (https://github.com/pressly/sup).
 
-The name Baker is a reference to Chet Baker.
+The name Byrd is a reference to Donald Byrd.
 '''
 
 description = ('Simple deployment tool based on Paramiko')
 basedir, _ = os.path.split(__file__)
 pkg_yaml = glob(os.path.join(basedir, 'pkg', '*yaml'))
 
-setup(name='Baker',
-      version=baker.__version__,
+setup(name='Byrd',
+      version=byrd.__version__,
       description=description,
       long_description=long_description,
       author='Bertrand Chenal',
       author_email='bertrand@adimian.com',
-      url='https://bitbucket.org/bertrandchenal/baker',
+      url='https://bitbucket.org/bertrandchenal/byrd',
       license='MIT',
-      py_modules=['baker'],
+      py_modules=['byrd'],
       entry_points={
           'console_scripts': [
-              'bk = baker:main',
+              'bd = byrd:main',
           ],
       },
       data_files=[('pkg', pkg_yaml)],

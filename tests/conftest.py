@@ -4,7 +4,7 @@ import logging
 
 import pytest
 
-from baker import logger, log_handler, yaml_load, ObjectDict
+from byrd import logger, log_handler, yaml_load, ObjectDict
 
 # Disable default handler
 logger.removeHandler(log_handler)

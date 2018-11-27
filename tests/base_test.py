@@ -3,7 +3,7 @@ from shlex import shlex
 
 import pytest
 
-from baker import run_batch, load_cli, Env
+from byrd import run_batch, load_cli, Env
 
 
 def test_all_conf(test_cfg, log_buff):
