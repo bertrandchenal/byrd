@@ -7,7 +7,7 @@ OS (aka Windows support). This project is in alpha stage, please
 handle carefully.
 
 The name Byrd is a reference to
-[Donald Byrd](https://en.wikipedia.org/wiki/Donald_Byrd.
+[Donald Byrd](https://en.wikipedia.org/wiki/Donald_Byrd).
 
 
 # Quickstart
