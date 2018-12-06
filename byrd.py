@@ -12,14 +12,9 @@ import subprocess
 import sys
 import threading
 
+import keyring
 import paramiko
 import yaml
-
-
-try:
-    import keyring
-except ImportError:
-    keyring = None
 
 __version__ = '0.0'
 
@@ -348,33 +343,28 @@ class Env(ChainMap):
             return self.fmt_string(what)
         return self.fmt_env(what)
 
+def get_secret(service, resource, resource_id=None):
+    resource_id = resource_id or resource
+    secret = keyring.get_password(service, resource_id)
+    if not secret:
+        secret = getpass('Password for %s: ' % resource)
+        keyring.set_password(service, resource_id, secret)
+    return secret
 
 def get_passphrase(key_path):
     service = 'SSH private key'
     csum = md5(open(key_path, 'rb').read()).digest().hex()
-    ssh_pass = keyring.get_password(service, csum)
-    if not ssh_pass:
-        ssh_pass = getpass('Password for %s: ' % key_path)
-        keyring.set_password(service, csum, ssh_pass)
-    return ssh_pass
+    return get_secret(service, key_path, csum)
 
 
 def get_password(host):
     service = 'SSH password'
-    ssh_pass = keyring.get_password(service, host)
-    if not ssh_pass:
-        ssh_pass = getpass('Password for %s: ' % host)
-        keyring.set_password(service, host, ssh_pass)
-    return ssh_pass
+    return get_secret(service, host)
 
 
 def get_sudo_passwd():
     service = "Sudo password"
-    passwd = keyring.get_password(service, '-')
-    if not passwd:
-        passwd = getpass('Sudo password:')
-        keyring.set_password(service, '-', passwd)
-    return passwd
+    return get_secret(service, 'sudo')
 
 
 CONNECTION_CACHE = {}

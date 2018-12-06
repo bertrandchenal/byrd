@@ -33,4 +33,9 @@ setup(name='Byrd',
           ],
       },
       data_files=[('pkg', pkg_yaml)],
+      install_requires=[
+          'paramiko',
+          'pyyaml',
+          'keyring',
+      ],
 )
