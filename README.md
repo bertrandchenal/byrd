@@ -216,7 +216,7 @@ networks:
 We can now run:
 
 ```
-$ bd net/web echo-host --dry-run' -v
+$ bd net/web echo-host --dry-run -v
 INFO:2018-08-14 11:27:33: Load config bd.yaml
 INFO:2018-08-14 11:27:33: Load config network.yaml
 INFO:2018-08-14 11:27:33: echo-host
