@@ -268,6 +268,7 @@ class Task(Node):
         'assert': Atom,
         'env': EnvNode,
         'multi': MultiList,
+        'fmt': Atom,
     }
 
     @classmethod
@@ -307,25 +308,29 @@ class ConfigRoot(Node):
     }
 
 
-
 class Env(ChainMap):
 
     def __init__(self, *dicts):
+        self.fmt_kind = 'new'
         return super().__init__(*filter(lambda x: x is not None, dicts))
 
-    def fmt_env(self, child_env):
+    def fmt_env(self, child_env, kind=None):
         new_env = {}
         for key, val in child_env.items():
             # env wrap-around!
-            new_val = self.fmt(val)
+            new_val = self.fmt(val, kind=kind)
             if new_val == val:
                 continue
             new_env[key] = new_val
         return Env(new_env, child_env)
 
-    def fmt_string(self, string):
+    def fmt_string(self, string, kind=None):
+        fmt_kind = kind or self.fmt_kind
         try:
-            return string.format(**self)
+            if fmt_kind == 'old':
+                return string % self
+            else:
+                return string.format(**self)
         except KeyError as exc:
             msg = 'Unable to format "%s" (missing: "%s")'% (string, exc.args[0])
             candidates = gen_candidates(self.keys())
@@ -338,10 +343,11 @@ class Env(ChainMap):
             msg = 'Unable to format "%s", positional argument not supported'
             raise FmtException(msg)
 
-    def fmt(self, what):
+    def fmt(self, what, kind=None):
         if isinstance(what, str):
-            return self.fmt_string(what)
-        return self.fmt_env(what)
+            return self.fmt_string(what, kind=kind)
+        return self.fmt_env(what, kind=kind)
+
 
 def get_secret(service, resource, resource_id=None):
     resource_id = resource_id or resource
@@ -350,6 +356,7 @@ def get_secret(service, resource, resource_id=None):
         secret = getpass('Password for %s: ' % resource)
         keyring.set_password(service, resource_id, secret)
     return secret
+
 
 def get_passphrase(key_path):
     service = 'SSH private key'
@@ -396,7 +403,7 @@ def connect(host, auth):
 def run_local(cmd, env, cli):
     # Run local task
     cmd = env.fmt(cmd)
-    logger.info(env.fmt('{task_desc}'))
+    logger.info(env.fmt('{task_desc}', kind='new'))
     if cli.dry_run:
         logger.info('[dry-run] ' + cmd)
         return None
@@ -419,7 +426,7 @@ def run_local(cmd, env, cli):
 def run_python(task, env, cli):
     # Execute a piece of python localy
     code = task.python
-    logger.info(env.fmt('{task_desc}'))
+    logger.info(env.fmt('{task_desc}', kind='new'))
     if cli.dry_run:
         logger.info('[dry-run] ' + code)
         return None
@@ -428,6 +435,7 @@ def run_python(task, env, cli):
     if task.sudo:
         user = 'root' if task.sudo is True else task.sudo
         cmd = 'sudo -u {} -- {}'.format(user, cmd)
+
     process = subprocess.Popen(
         cmd,
         stdout=subprocess.PIPE,
@@ -519,7 +527,7 @@ def run_remote(task, host, env, cli):
     res = None
     host = env.fmt(host)
     env.update({
-        'host': host,
+        'host': extract_host(host),
     })
     if cli.dry_run:
         client = None
@@ -534,7 +542,7 @@ def run_remote(task, host, env, cli):
             else:
                  prefix = '[sudo as %s] ' % task.sudo
         msg = prefix + '{host}: {task_desc}'
-        logger.info(env.fmt(msg))
+        logger.info(env.fmt(msg, kind='new'))
         logger.debug(TAB + TAB.join(cmd.splitlines()))
         if cli.dry_run:
             logger.info('[dry-run] ' + cmd)
@@ -576,26 +584,10 @@ def run_remote(task, host, env, cli):
     return res
 
 
-def run_task(task, host, cli, parent_env=None):
+def run_task(task, host, cli, env=None):
     '''
     Execute one task on one host (or locally)
     '''
-
-    # Prepare environment
-    env = Env(
-        {},
-        # Env on the task itself
-        task.get('env'),
-        # Env from parent task
-        parent_env,
-    ).new_child()
-
-    env.update({
-        'task_desc': env.fmt(task.desc),
-        'task_name': task.name,
-        'host': host or '',
-    })
-
     if task.local:
         res = run_local(task.local, env, cli)
     elif task.python:
@@ -617,7 +609,6 @@ def run_task(task, host, cli, parent_env=None):
     return res
 
 
-
 def run_batch(task, hosts, cli, global_env=None):
     '''
     Run one task on a list of hosts
@@ -625,8 +616,8 @@ def run_batch(task, hosts, cli, global_env=None):
     out = None
     export_env = {}
     task_env = global_env.fmt(task.get('env', {}))
-    parent_env = Env(export_env, task_env, global_env)
     if task.get('multi'):
+        parent_env = Env(export_env, task_env, global_env)
         parent_sudo = task.sudo
         for pos, step in enumerate(task.multi):
             task_name = step.task
@@ -656,11 +647,23 @@ def run_batch(task, hosts, cli, global_env=None):
                 export_env[step.export] = out
 
     else:
+        task_env.update({
+            'task_desc': global_env.fmt(task.desc),
+            'task_name': task.name,
+        })
+        parent_env = Env(task_env, global_env)
+        if task.get('fmt'):
+            parent_env.fmt_kind = task.fmt
+
         res = None
         if task.once and (task.local or task.python):
             res = run_task(task, None, cli, parent_env)
         elif hosts:
             for host in hosts:
+                env_host = extract_host(host)
+                parent_env.update({
+                    'host': env_host,
+                })
                 res = run_task(task, host, cli, parent_env)
                 if task.once:
                     break
@@ -668,6 +671,10 @@ def run_batch(task, hosts, cli, global_env=None):
             logger.warning('Nothing to do for task "%s"' % task._path)
         out = res and res.stdout.strip() or ''
     return out
+
+
+def extract_host(host_string):
+    return host_string and host_string.split('@')[-1] or ''
 
 
 def abort(msg):

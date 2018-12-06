@@ -89,8 +89,6 @@ tasks:
     desc: Unzip a zip file
     run: test -d {dir} || unzip {file} -d {dir}
   patch:
-    # Do not leave .rej file if patch was already applied.
-    # Thus the "rm" on last line.
     desc: Patch a file with a specific local diff file
     run: |
       patch --ignore-whitespace --reject-file=/dev/null -uN {file} << EOF
