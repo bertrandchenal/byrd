@@ -1,0 +1,7 @@
+tasks:
+  print:
+    desc: Print True
+    python: |-
+      from random import random
+      print(random() < 1)
+    once: true

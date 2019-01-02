@@ -1,0 +1,28 @@
+tasks:
+  one:
+    python: print('one')
+    once: true
+  two:
+    python: print('two')
+    once: true
+  three:
+    python: print('three')
+    once: true
+  concat:
+    python: |
+      import os
+      print(os.environ['one'], os.environ['two'], os.environ['_'])
+    once: true
+  nested:
+    multi:
+      - python: print('nested')
+        once: true
+  all:
+    multi:
+      - task: one
+        export: one
+      - task: two
+        export: two
+      - task: three
+      - task: concat
+      - task: nested

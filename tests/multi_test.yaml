@@ -1,6 +1,6 @@
-cli: '-c examples/multi.yaml all'
+cli: '-c tests/multi.yaml all'
 output: |
-  Load config examples/multi.yaml
+  Load config tests/multi.yaml
   one
   print('one')
   one

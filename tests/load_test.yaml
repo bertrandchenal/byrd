@@ -1,7 +1,7 @@
-cli: '-c examples/load.yaml net/web echo-host --dry-run'
+cli: '-c tests/load.yaml net/web echo-host --dry-run'
 output: |
-  Load config examples/load.yaml
-  Load config examples/network_only.yaml
+  Load config tests/load.yaml
+  Load config tests/network_only.yaml
   echo-host
   [dry-run] echo web1.example.com
   echo-host

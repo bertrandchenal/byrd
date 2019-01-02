@@ -1,5 +1,5 @@
-cli: "--dry-run -c examples/task_only.yaml time"
+cli: "--dry-run -c tests/task_only.yaml time"
 output: |
-  Load config examples/task_only.yaml
+  Load config tests/task_only.yaml
   Print current time (on local machine)
   [dry-run] date -Iseconds

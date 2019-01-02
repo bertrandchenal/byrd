@@ -1,7 +1,9 @@
+from contextlib import contextmanager
 from getpass import getpass
 from hashlib import md5
 from itertools import chain
 from collections import ChainMap, OrderedDict, defaultdict
+from itertools import islice
 from string import Formatter
 import argparse
 import io
@@ -349,6 +351,16 @@ class Env(ChainMap):
         return self.fmt_env(what, kind=kind)
 
 
+class DummyClient:
+    '''
+    Dummy Paramiko client, mainly usefull for testing & dry runs
+    '''
+
+    @contextmanager
+    def open_sftp(self):
+        yield None
+
+
 def get_secret(service, resource, resource_id=None):
     resource_id = resource_id or resource
     secret = keyring.get_password(service, resource_id)
@@ -431,7 +443,7 @@ def run_python(task, env, cli):
         logger.info('[dry-run] ' + code)
         return None
     logger.debug(TAB + TAB.join(code.splitlines()))
-    cmd = 'python -c "import sys;exec(sys.stdin.read())"'
+    cmd = ['python', '-c', 'import sys;exec(sys.stdin.read())']
     if task.sudo:
         user = 'root' if task.sudo is True else task.sudo
         cmd = 'sudo -u {} -- {}'.format(user, cmd)
@@ -480,6 +492,9 @@ def log_stream(stream, buff):
 
 
 def run_helper(client, cmd, env=None, in_buff=None, sudo=False):
+    '''
+    Helper function to run `cmd` command on remote host
+    '''
     chan = client.get_transport().open_session()
     if env:
         chan.update_environment(env)
@@ -530,9 +545,10 @@ def run_remote(task, host, env, cli):
         'host': extract_host(host),
     })
     if cli.dry_run:
-        client = None
+        client = DummyClient()
     else:
         client = connect(host, cli.cfg.auth)
+
     if task.run:
         cmd = env.fmt(task.run)
         prefix = ''
@@ -552,29 +568,11 @@ def run_remote(task, host, env, cli):
     elif task.send:
         local_path = env.fmt(task.send)
         remote_path = env.fmt(task.to)
-        logger.info(f'[send] {local_path} -> {host}:{remote_path}')
         if not os.path.exists(local_path):
-            ByrdException('Path "%s" not found'  % local_path)
-        if cli.dry_run:
-            logger.info('[dry-run]')
-            return
+            raise ByrdException('Path "%s" not found'  % local_path)
         else:
-            with client.open_sftp() as sftp:
-                if os.path.isfile(local_path):
-                    sftp.put(os.path.abspath(local_path), remote_path)
-                elif os.path.isdir(local_path):
-                    for root, subdirs, files in os.walk(local_path):
-                        rel_dir = os.path.relpath(root, local_path)
-                        rel_dirs = os.path.split(rel_dir)
-                        rem_dir = posixpath.join(remote_path, *rel_dirs)
-                        run_helper(client, 'mkdir -p {}'.format(rem_dir))
-                        for f in files:
-                            rel_f = os.path.join(root, f)
-                            rem_file = posixpath.join(rem_dir, f)
-                            sftp.put(os.path.abspath(rel_f), rem_file)
-                else:
-                    msg = 'Unexpected path "%s" (not a file, not a directory)'
-                    ByrdException(msg % local_path)
+            send(client, env, cli, task)
+
     else:
         raise ByrdException('Unable to run task "%s"' % task.name)
 
@@ -582,6 +580,49 @@ def run_remote(task, host, env, cli):
         logger.debug(TAB + TAB.join(res.stdout.splitlines()))
 
     return res
+
+def send(client, env, cli, task):
+    fmt = task.fmt and Env(env, {'fmt': 'new'}).fmt(task.fmt) or None
+    local_path = env.fmt(task.send)
+    remote_path = env.fmt(task.to)
+    dry_run = cli.dry_run
+    with client.open_sftp() as sftp:
+        if os.path.isfile(local_path):
+            send_file(sftp, os.path.abspath(local_path), remote_path, env,
+                      dry_run=dry_run, fmt=fmt)
+        elif os.path.isdir(local_path):
+            for root, subdirs, files in os.walk(local_path):
+                rel_dir = os.path.relpath(root, local_path)
+                rel_dirs = os.path.split(rel_dir)
+                rem_dir = posixpath.join(remote_path, *rel_dirs)
+                run_helper(client, 'mkdir -p {}'.format(rem_dir))
+                for f in files:
+                    rel_f = os.path.join(root, f)
+                    rem_file = posixpath.join(rem_dir, f)
+                    send_file(sftp, os.path.abspath(rel_f), rem_file, env,
+                              dry_run=dry_run, fmt=fmt)
+        else:
+            msg = 'Unexpected path "%s" (not a file, not a directory)'
+            raise ByrdException(msg % local_path)
+
+
+def send_file(sftp, local_path, remote_path, env, dry_run=False, fmt=None):
+    if not fmt:
+        logger.info(f'[send] {local_path} -> {remote_path}')
+        lines = islice(open(local_path), 30)
+        logger.debug('File head:' + TAB.join(lines))
+        if not dry_run:
+            sftp.put(local_path, remote_path)
+        return
+    # Format file content and save it on remote
+    logger.info(f'[fmt] {local_path} -> {remote_path}')
+    content = env.fmt(open(local_path).read(), kind=fmt)
+    lines = islice(content.splitlines(), 30)
+    logger.debug('File head:' + TAB.join(lines))
+    if not dry_run:
+        fh = sftp.open(remote_path, mode='w')
+        fh.write(content)
+        fh.close()
 
 
 def run_task(task, host, cli, env=None):
@@ -728,7 +769,6 @@ def load_cfg(path, prefix=None):
                 child_prefix, _ = os.path.splitext(rel_path)
 
             child_cfg = load_cfg(child_path, child_prefix.split('/'))
-
             for section in load_sections:
                 if not section in cfg:
                     continue

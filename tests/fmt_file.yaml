@@ -1,0 +1,23 @@
+load:
+  - pkg: os.yaml
+
+networks:
+  all:
+    hosts:
+      - ham
+      - spam
+
+tasks:
+  fmt-file-new:
+    multi:
+      - task: os/send-tpl
+    env:
+      send: tests/dummy-new-fmt.cfg
+      to: remote.cfg
+  fmt-file-old:
+    multi:
+      - task: os/send-tpl
+    env:
+      send: tests/dummy-old-fmt.cfg
+      to: remote.cfg
+      fmt: old

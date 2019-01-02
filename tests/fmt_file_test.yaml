@@ -1,0 +1,13 @@
+cli: '-c tests/fmt_file.yaml --dry-run -vv fmt-file-new fmt-file-old all'
+output: |
+  Load config tests/fmt_file.yaml
+  Load config /home/bch/dev/byrd/pkg/os.yaml
+  Load config /home/bch/dev/byrd/pkg/misc.yaml
+  [fmt] /home/bch/dev/byrd/tests/dummy-new-fmt.cfg -> remote.cfg
+  File head:ham
+  [fmt] /home/bch/dev/byrd/tests/dummy-new-fmt.cfg -> remote.cfg
+  File head:spam
+  [fmt] /home/bch/dev/byrd/tests/dummy-old-fmt.cfg -> remote.cfg
+  File head:ham
+  [fmt] /home/bch/dev/byrd/tests/dummy-old-fmt.cfg -> remote.cfg
+  File head:spam

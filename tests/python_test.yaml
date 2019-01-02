@@ -1,7 +1,7 @@
-cli: '-c examples/python.yaml print'
+cli: '-c tests/python.yaml print'
 output: |
-  Load config examples/python.yaml
-  Print module type
-  import os
-  print(type(os))
-  <class 'module'>
+  Load config tests/python.yaml
+  Print True
+  from random import random
+  print(random() < 1)
+  True

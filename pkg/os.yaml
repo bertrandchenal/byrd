@@ -1,3 +1,6 @@
+load:
+  - pkg: misc.yaml
+
 tasks:
   # Generic tasks
   bash:
@@ -15,12 +18,12 @@ tasks:
   mount:
     run: mount | grep ' {path} ' &> /dev/null || mount {path}
   move:
-    desc: Move a file or directory
+    desc: Move a file or directory (if destination does not exists)
     run: |
       if test ! -e {to}
       then mv {from} {to}
       fi
-  copy:
+  copy: # XXX move is lazy but copy is not !?
     desc: Copy a file or directory
     run: |
       if test -f {from}
@@ -48,9 +51,16 @@ tasks:
     desc: Send a file or a directory
     send: "{send}"
     to: "{to}"
+  send-tpl:
+    desc: Format a template and send it (can be file or directory)
+    send: "{send}"
+    to: "{to}"
+    fmt: "{fmt}"
   sudo-send:
     desc: Combine send & sudo-move
     multi:
+      - task: misc/random-string
+        export: tmppath
       - task: send
         env:
           to: "/tmp/{tmppath}"

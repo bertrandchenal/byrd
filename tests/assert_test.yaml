@@ -1,6 +1,6 @@
-cli: '-c examples/assert.yaml one'
+cli: '-c tests/assert.yaml one'
 output: |
-  Load config examples/assert.yaml
+  Load config tests/assert.yaml
   one
   print('one')
   one
