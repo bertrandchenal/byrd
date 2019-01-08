@@ -91,7 +91,7 @@ tasks:
     run: id {user} || sudo adduser {user} --disabled-login --gecos ""
   add-group:
     desc: Add group to user
-    run: usermod -a -G {user} {group}
+    run: usermod -a -G {group} {user}
   wget:
     desc: Download a file
     run: test -f {file} || wget -O {file} {url}
