@@ -50,6 +50,10 @@ tasks:
      desc: Query azure vm by name for info
      local: az vm list --query "[?name=='{vm_name}']"
      once: true
+  vm-search:
+    desc: Search VM by name
+    local: az vm list --query "[?contains(name, '{vm_name}')].name"
+    once: true
   fix-hosts:
     desc: "See: https://github.com/Microsoft/WSL/issues/491"
     run: |
