@@ -1,0 +1,5 @@
+tasks:
+  random-string:
+    python: |
+      import random, string
+      print(''.join(random.sample(string.hexdigits, 8)))
