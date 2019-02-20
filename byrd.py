@@ -14,9 +14,13 @@ import subprocess
 import sys
 import threading
 
-import keyring
-import paramiko
-import yaml
+try:
+    # This file is imported by setup.py at install time
+    import keyring
+    import paramiko
+    import yaml
+except ImportError:
+    pass
 
 __version__ = '0.0'
 
