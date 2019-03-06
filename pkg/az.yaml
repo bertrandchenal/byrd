@@ -9,17 +9,17 @@ tasks:
      once: true
   delete-vm-only:
      desc: Delete azure VM
-     local: az vm delete -n "{vm_name}"  -g "RG-DC-BUS-QUANTS" -y
+     local: az vm delete -n "{vm_name}"  -g "{ressource_group}" -y
      once: true
   show-disk:
      desc: Read disk id
      local: >-
-       az vm show -g "RG-DC-BUS-QUANTS" --query "{query}"
+       az vm show -g "{ressource_group}" --query "{query}"
        -n "{vm_name}"
      once: true
   delete-disk:
      desc: Delete azure disk
-     local: az disk delete -n "{disk_name}" -g "RG-DC-BUS-QUANTS" -y
+     local: az disk delete -n "{disk_name}" -g "{ressource_group}" -y
      once: true
   delete-vm:
      desc: Delete both VM and attached disk
