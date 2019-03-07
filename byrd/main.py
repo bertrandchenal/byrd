@@ -14,7 +14,7 @@ import threading
 from .config import Task, yaml_load, ConfigRoot
 from .utils import (ByrdException, LocalException, ObjectDict, RemoteException,
                    DummyClient, Env, spellcheck, spell, enable_logging_color,
-                   logger)
+                   logger, log_handler)
 
 try:
     # This file is imported by setup.py at install time
@@ -77,6 +77,7 @@ def connect(host, auth):
     client.connect(hostname, username=username, password=password,
                    key_filename=private_key_file,
     )
+    logger.debug(f'Connected to {hostname} as {username}')
     CONNECTION_CACHE[host] = client
     return client
 
@@ -558,8 +559,8 @@ def main():
             enable_logging_color()
         cli.verbose = max(0, 1 + cli.verbose - cli.quiet)
         level = ['WARNING', 'INFO', 'DEBUG'][min(cli.verbose, 2)]
-        print(level)
         logger.setLevel(level)
+        log_handler.setLevel(level)
 
         if cli.info:
             info(cli)
