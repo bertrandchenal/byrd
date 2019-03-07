@@ -1,0 +1,10 @@
+tasks:
+  clone:
+    desc: Clone git repo
+    run: |
+      if test ! -d {path}
+        then  git clone {repo_uri} {path}
+      fi
+  pull:
+    desc: Update codebase
+    run: cd src/prove && git pull

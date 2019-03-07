@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-from setuptools import setup
+from setuptools import setup, find_packages
 from glob import glob
 import os
 
-import byrd
+from byrd import main
 
 long_description = '''
 
@@ -16,10 +16,10 @@ The name Byrd is a reference to Donald Byrd.
 
 description = ('Simple deployment tool based on Paramiko')
 basedir, _ = os.path.split(__file__)
-pkg_yaml = glob(os.path.join(basedir, 'pkg', '*yaml'))
+pkg_yaml = glob(os.path.join('pkg', '*yaml'))
 
 setup(name='Byrd',
-      version=byrd.__version__,
+      version=main.__version__,
       description=description,
       long_description=long_description,
       author='Bertrand Chenal',
@@ -29,12 +29,11 @@ setup(name='Byrd',
       py_modules=['byrd'],
       entry_points={
           'console_scripts': [
-              'bd = byrd:main',
+              'bd = byrd.main:main',
           ],
       },
-      packages=['pkg'],
-      package_data={'pkg': pkg_yaml},
-      include_package_data=True,
+      packages=['byrd'],
+      package_data={'byrd': ['pkg/*yaml']},
       install_requires=[
           'paramiko',
           'pyyaml',

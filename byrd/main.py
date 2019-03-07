@@ -1,368 +1,33 @@
-from contextlib import contextmanager
 from getpass import getpass
 from hashlib import md5
 from itertools import chain
-from collections import ChainMap, OrderedDict, defaultdict
 from itertools import islice
 from string import Formatter
 import argparse
 import io
-import logging
 import os
 import posixpath
 import subprocess
 import sys
 import threading
 
+from .config import Task, yaml_load, ConfigRoot
+from .utils import (ByrdException, LocalException, ObjectDict, RemoteException,
+                   DummyClient, Env, spellcheck, spell, enable_logging_color,
+                   logger)
+
 try:
     # This file is imported by setup.py at install time
     import keyring
     import paramiko
-    import yaml
 except ImportError:
     pass
 
-__version__ = '0.0'
-
-
-log_fmt = '%(levelname)s:%(asctime).19s: %(message)s'
-logger = logging.getLogger('byrd')
-logger.setLevel(logging.INFO)
-log_handler = logging.StreamHandler()
-log_handler.setLevel(logging.INFO)
-log_handler.setFormatter(logging.Formatter(log_fmt))
-logger.addHandler(log_handler)
-
+__version__ = '0.0.2'
 basedir, _ = os.path.split(__file__)
 PKG_DIR = os.path.join(basedir, 'pkg')
 TAB = '\n    '
 
-class ByrdException(Exception):
-    pass
-
-class FmtException(ByrdException):
-    pass
-
-class ExecutionException(ByrdException):
-    pass
-
-class RemoteException(ExecutionException):
-    pass
-
-class LocalException(ExecutionException):
-    pass
-
-def enable_logging_color():
-    try:
-        import colorama
-    except ImportError:
-        return
-
-    colorama.init()
-    MAGENTA = colorama.Fore.MAGENTA
-    RED = colorama.Fore.RED
-    RESET = colorama.Style.RESET_ALL
-
-    # We define custom handler ..
-    class Handler(logging.StreamHandler):
-        def format(self, record):
-            if record.levelname == 'INFO':
-                record.msg = MAGENTA + record.msg + RESET
-            elif record.levelname in ('WARNING', 'ERROR', 'CRITICAL'):
-                record.msg = RED + record.msg + RESET
-            return super(Handler, self).format(record)
-
-    #  .. and plug it
-    logger.removeHandler(log_handler)
-    handler = Handler()
-    handler.setFormatter(logging.Formatter(log_fmt))
-    logger.addHandler(handler)
-    logger.propagate = 0
-
-
-def yaml_load(stream):
-    class OrderedLoader(yaml.Loader):
-        pass
-
-    def construct_mapping(loader, node):
-        loader.flatten_mapping(node)
-        return OrderedDict(loader.construct_pairs(node))
-    OrderedLoader.add_constructor(
-        yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG,
-        construct_mapping)
-    return yaml.load(stream, OrderedLoader)
-
-
-def edits(word):
-    yield word
-    splits = ((word[:i], word[i:]) for i in range(len(word) + 1))
-    for left, right in splits:
-        if right:
-            yield left + right[1:]
-
-
-def gen_candidates(wordlist):
-    candidates = defaultdict(set)
-    for word in wordlist:
-        for ed1 in edits(word):
-            for ed2 in edits(ed1):
-                candidates[ed2].add(word)
-    return candidates
-
-
-def spell(candidates,  word):
-    matches = set(chain.from_iterable(
-        candidates[ed] for ed in edits(word) if ed in candidates
-    ))
-    return matches
-
-
-def spellcheck(objdict, word):
-    if word in objdict:
-        return
-
-    candidates = objdict.get('_candidates')
-    if not candidates:
-        candidates = gen_candidates(list(objdict))
-        objdict._candidates = candidates
-
-    msg = '"%s" not found in %s' % (word, objdict._path)
-    matches = spell(candidates, word)
-    if matches:
-        msg += ', try: %s' % ' or '.join(matches)
-    raise ByrdException(msg)
-
-
-class ObjectDict(dict):
-    """
-    Simple objet sub-class that allows to transform a dict into an
-    object, like: `ObjectDict({'ham': 'spam'}).ham == 'spam'`
-    """
-    _meta = {}
-
-    def copy(self):
-        res = ObjectDict(super().copy())
-        ObjectDict._meta[id(res)] = ObjectDict._meta.get(id(self), {}).copy()
-        return res
-
-    def __getattr__(self, key):
-        if key.startswith('_'):
-            return ObjectDict._meta[id(self), key]
-
-        if key in self:
-            return self[key]
-        else:
-            return None
-
-    def __setattr__(self, key, value):
-        if key.startswith('_'):
-            ObjectDict._meta[id(self), key] = value
-        else:
-            self[key] = value
-
-class Node:
-
-    @staticmethod
-    def fail(path, kind):
-        msg = 'Error while parsing config: expecting "%s" while parsing "%s"'
-        raise ByrdException(msg % (kind, '->'.join(path)))
-
-    @classmethod
-    def parse(cls, cfg, path=tuple()):
-        children = getattr(cls, '_children', None)
-        type_name = children and type(children).__name__ \
-                    or ' or '.join((c.__name__ for c in cls._type))
-        res = None
-        if type_name == 'dict':
-            if not isinstance(cfg, dict):
-                cls.fail(path, type_name)
-            res = ObjectDict()
-
-            if '*' in children:
-                assert len(children) == 1, "Don't mix '*' and other keys"
-                child_class = children['*']
-                for name, value in cfg.items():
-                    res[name] = child_class.parse(value, path + (name,))
-            else:
-                # Enforce known pre-defined
-                for key in cfg:
-                    if key not in children:
-                        path = ' -> '.join(path)
-                        if path:
-                            msg = 'Attribute "%s" not understood in %s' % (
-                                key, path)
-                        else:
-                            msg = 'Top-level attribute "%s" not understood' % (
-                                key)
-                        candidates = gen_candidates(children.keys())
-                        matches = spell(candidates, key)
-                        if matches:
-                            msg += ', try: %s' % ' or '.join(matches)
-                        raise ByrdException(msg)
-
-                for name, child_class in children.items():
-                    if name not in cfg:
-                        continue
-                    res[name] = child_class.parse(cfg[name], path + (name,))
-
-        elif type_name == 'list':
-            if not isinstance(cfg, list):
-                cls.fail(path, type_name)
-            child_class = children[0]
-            res = [child_class.parse(c, path+ ('[%s]' % pos,))
-                   for pos, c in enumerate(cfg)]
-
-        else:
-            if not isinstance(cfg, cls._type):
-                cls.fail(path, type_name)
-            res = cfg
-
-        return cls.setup(res, path)
-
-    @classmethod
-    def setup(cls, values, path):
-        if isinstance(values, ObjectDict):
-            values._path = '->'.join(path)
-        return values
-
-
-class Atom(Node):
-    _type = (str, bool)
-
-class AtomList(Node):
-    _children = [Atom]
-
-class Hosts(Node):
-    _children = [Atom]
-
-class Auth(Node):
-    _children = {'*': Atom}
-
-class EnvNode(Node):
-    _children = {'*': Atom}
-
-class HostGroup(Node):
-    _children = {
-        'hosts': Hosts,
-    }
-
-class Network(Node):
-    _children = {
-        '*': HostGroup,
-    }
-
-class Multi(Node):
-    _children = {
-        'task': Atom,
-        'export': Atom,
-        'network': Atom,
-    }
-
-class MultiList(Node):
-    _children = [Multi]
-
-class Task(Node):
-    _children = {
-        'desc': Atom,
-        'local': Atom,
-        'python': Atom,
-        'once': Atom,
-        'run': Atom,
-        'sudo': Atom,
-        'send': Atom,
-        'to': Atom,
-        'assert': Atom,
-        'env': EnvNode,
-        'multi': MultiList,
-        'fmt': Atom,
-    }
-
-    @classmethod
-    def setup(cls, values, path):
-        values['name'] = path and path[-1] or ''
-        if 'desc' not in values:
-            values['desc'] = values.get('name', '')
-        super().setup(values, path)
-        return values
-
-# Multi can also accept any task attribute:
-Multi._children.update(Task._children)
-
-
-class TaskGroup(Node):
-    _children = {
-        '*': Task,
-    }
-
-class LoadNode(Node):
-    _children = {
-        'file': Atom,
-        'pkg': Atom,
-        'as': Atom,
-    }
-
-class LoadList(Node):
-    _children = [LoadNode]
-
-class ConfigRoot(Node):
-    _children = {
-        'networks': Network,
-        'tasks': TaskGroup,
-        'auth': Auth,
-        'env': EnvNode,
-        'load': LoadList,
-    }
-
-
-class Env(ChainMap):
-
-    def __init__(self, *dicts):
-        self.fmt_kind = 'new'
-        return super().__init__(*filter(lambda x: x is not None, dicts))
-
-    def fmt_env(self, child_env, kind=None):
-        new_env = {}
-        for key, val in child_env.items():
-            # env wrap-around!
-            new_val = self.fmt(val, kind=kind)
-            if new_val == val:
-                continue
-            new_env[key] = new_val
-        return Env(new_env, child_env)
-
-    def fmt_string(self, string, kind=None):
-        fmt_kind = kind or self.fmt_kind
-        try:
-            if fmt_kind == 'old':
-                return string % self
-            else:
-                return string.format(**self)
-        except KeyError as exc:
-            msg = 'Unable to format "%s" (missing: "%s")'% (string, exc.args[0])
-            candidates = gen_candidates(self.keys())
-            key = exc.args[0]
-            matches = spell(candidates, key)
-            if matches:
-                msg += ', try: %s' % ' or '.join(matches)
-            raise FmtException(msg )
-        except IndexError as exc:
-            msg = 'Unable to format "%s", positional argument not supported'
-            raise FmtException(msg)
-
-    def fmt(self, what, kind=None):
-        if isinstance(what, str):
-            return self.fmt_string(what, kind=kind)
-        return self.fmt_env(what, kind=kind)
-
-
-class DummyClient:
-    '''
-    Dummy Paramiko client, mainly usefull for testing & dry runs
-    '''
-
-    @contextmanager
-    def open_sftp(self):
-        yield None
 
 
 def get_secret(service, resource, resource_id=None):
@@ -571,7 +236,6 @@ def run_remote(task, host, env, cli):
 
     elif task.send:
         local_path = env.fmt(task.send)
-        remote_path = env.fmt(task.to)
         if not os.path.exists(local_path):
             raise ByrdException('Path "%s" not found'  % local_path)
         else:
@@ -619,7 +283,8 @@ def send_file(sftp, local_path, remote_path, env, dry_run=False, fmt=None):
             sftp.put(local_path, remote_path)
         return
     # Format file content and save it on remote
-    logger.info(f'[fmt] {local_path} -> {remote_path}')
+    local_relpath = os.path.relpath(local_path)
+    logger.info(f'[fmt] {local_relpath} -> {remote_path}')
     content = env.fmt(open(local_path).read(), kind=fmt)
     lines = islice(content.splitlines(), 30)
     logger.debug('File head:' + TAB.join(lines))
@@ -731,7 +396,7 @@ def load_cfg(path, prefix=None):
     load_sections = ('networks', 'tasks', 'auth', 'env')
 
     if os.path.isfile(path):
-        logger.debug('Load config %s' % path)
+        logger.debug('Load config %s' % os.path.relpath(path))
         cfg = yaml_load(open(path))
         cfg = ConfigRoot.parse(cfg)
     else:
@@ -743,18 +408,10 @@ def load_cfg(path, prefix=None):
 
     # Create backrefs between tasks to the local config
     if cfg.get('tasks'):
-        items = cfg['tasks'].items()
-        for k, v in items:
-            v._cfg = ObjectDict(cfg.copy())
+        cfg_cp = cfg.copy()
+        for k, v in cfg['tasks'].items():
+            v._cfg = cfg_cp
 
-    if prefix:
-        key_fn = lambda x: '/'.join(prefix + [x])
-        # Apply prefix
-        for section in load_sections:
-            if not section in cfg:
-                continue
-            items = cfg[section].items()
-            cfg[section] = {key_fn(k): v for k, v in items}
 
     # Recursive load
     if cfg.load:
@@ -772,11 +429,13 @@ def load_cfg(path, prefix=None):
             else:
                 child_prefix, _ = os.path.splitext(rel_path)
 
-            child_cfg = load_cfg(child_path, child_prefix.split('/'))
+            child_cfg = load_cfg(child_path, child_prefix)
+            key_fn = lambda x: '/'.join([child_prefix, x])
             for section in load_sections:
-                if not section in cfg:
+                if not section in child_cfg:
                     continue
-                cfg[section].update(child_cfg.get(section, {}))
+                items = {key_fn(k): v for k, v in child_cfg[section].items()}
+                cfg[section].update(items)
     return cfg
 
 
@@ -899,7 +558,7 @@ def main():
             enable_logging_color()
         cli.verbose = max(0, 1 + cli.verbose - cli.quiet)
         level = ['WARNING', 'INFO', 'DEBUG'][min(cli.verbose, 2)]
-        log_handler.setLevel(level)
+        print(level)
         logger.setLevel(level)
 
         if cli.info:

@@ -1,0 +1,133 @@
+load:
+  - pkg: misc.yaml
+
+tasks:
+  # Generic tasks
+  bash:
+    desc: Interactive prompt
+    run: "bash"
+  create-dir:
+    desc: Add a new directory
+    run: "mkdir -p {path}"
+  symlink:
+    desc: Create symlink
+    run: |
+      if test ! -e {to}
+      then ln -s {from} {to}
+      fi
+  mount:
+    run: mount | grep ' {path} ' &> /dev/null || mount {path}
+  move:
+    desc: Move a file or directory (if destination does not exists)
+    run: |
+      if test ! -e {to}
+      then mv {from} {to}
+      fi
+  copy: # XXX move is lazy but copy is not !?
+    desc: Copy a file or directory
+    run: |
+      if test -f {from}
+      then cp {from} {to}
+      else cp -Tr {from} {to}
+      fi
+  remove:
+    desc: Remove (-r) path
+    run: "rm -r {path}"
+  chown:
+    desc: Chown a file or directory
+    run: "chown -R {user}. {path}"
+  chmod:
+    desc: Chmod a file or directory
+    run: "chmod -R {mode} {path}"
+  apt-install:
+    desc: Run apt install
+    run: apt update && apt install -y {packages}
+    sudo: true
+  systemctl:
+    desc: Call systemctl
+    run: systemctl {action} {service}
+    sudo: true
+  send:
+    desc: Send a file or a directory
+    send: "{send}"
+    to: "{to}"
+  send-tpl:
+    desc: Format a template and send it (can be file or directory)
+    send: "{send}"
+    to: "{to}"
+    fmt: "{fmt}"
+  sudo-send:
+    desc: Combine send & sudo-move
+    multi:
+      - task: misc/random-string
+        export: tmppath
+      - task: send
+        env:
+          to: "/tmp/{tmppath}"
+      - task: copy
+        sudo: true
+        env:
+          from: "/tmp/{tmppath}"
+      - task: remove
+        env:
+          path: "/tmp/{tmppath}"
+  parted:
+    desc: Create primary partition && mkfs
+    sudo: true
+    run: |
+      if test ! -e {device}1
+      then
+      parted {device} -a optimal --script mklabel gpt mkpart primary 0% 100%
+      sleep 1
+      mkfs -t ext4 {device}1
+      fi
+  append-line:
+    desc: Append line to file
+    run: >-
+      grep {guard} {file} &> /dev/null
+      || echo {line} >> {file}
+  add-user:
+    desc: Create a new user
+    run: id {user} || sudo adduser {user} --disabled-login --gecos ""
+  add-group:
+    desc: Add group to user
+    run: usermod -a -G {group} {user}
+  wget:
+    desc: Download a file
+    run: test -f {file} || wget -O {file} {url}
+  unzip:
+    desc: Unzip a zip file
+    run: test -d {dir} || unzip {file} -d {dir}
+  patch:
+    desc: Patch a file with a specific local diff file
+    run: |
+      patch --ignore-whitespace --reject-file=/dev/null -uN {file} << EOF
+      {diff_string}
+      EOF
+  send-rmcr:
+    desc: Send a file but remove its carriage returns before.
+    multi:
+      - task: send
+      - run: "tr -d '\r' < {to} > {to}-tmp"
+      - task: move
+        env:
+          from: "{to}-tmp"
+  sudo-send-rmcr:
+    desc: Combine send & sudo-move, and remove carriage returns
+    multi:
+      - task: send
+        env:
+          to: "/tmp/{tmppath}"
+      - task: rmcr
+        env:
+          from: "/tmp/{tmppath}"
+        sudo: true
+      - task: remove
+        env:
+          path: "/tmp/{tmppath}"
+  rmcr:
+    desc: remove carriage returns and move file
+    run: "tr -d '\r' < {from} | tee {to} > /dev/null"
+  unlink:
+    desc: remove a symlink
+    run: "test -L {path} && unlink {path}"

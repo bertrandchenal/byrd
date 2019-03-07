@@ -4,7 +4,8 @@ import logging
 
 import pytest
 
-from byrd import logger, log_handler, yaml_load, ObjectDict
+from byrd.utils import logger, log_handler, ObjectDict
+from byrd.config import yaml_load
 
 # Disable default handler
 logger.removeHandler(log_handler)
