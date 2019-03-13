@@ -134,6 +134,7 @@ class Task(Node):
         'send': Atom,
         'to': Atom,
         'assert': Atom,
+        'warn': Atom,
         'env': EnvNode,
         'multi': MultiList,
         'fmt': Atom,

@@ -317,6 +317,10 @@ def run_task(task, host, cli, env=None):
             logger.info('Assert ok')
         else:
             raise ByrdException('Assert "%s" failed!' % assert_)
+
+    if task.get('warn'):
+        msg = Env(env, res).fmt(task['warn'])
+        logger.warning(msg)
     return res
 
 
