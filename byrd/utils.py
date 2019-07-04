@@ -82,7 +82,7 @@ def spell(candidates,  word):
 
 def spellcheck(objdict, word):
     if word in objdict:
-        return
+        return objdict[word]
 
     candidates = objdict.get('_candidates')
     if not candidates:

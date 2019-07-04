@@ -138,6 +138,8 @@ class Task(Node):
         'env': EnvNode,
         'multi': MultiList,
         'fmt': Atom,
+        'networks': AtomList,
+        # TODO add support for auth here
     }
 
     @classmethod
@@ -175,5 +177,3 @@ class ConfigRoot(Node):
         'env': EnvNode,
         'load': LoadList,
     }
-
-

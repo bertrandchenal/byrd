@@ -62,11 +62,11 @@ def connect(host, auth):
 
     private_key_file = password = None
     if auth and auth.get('ssh_private_key'):
-        private_key_file = auth.ssh_private_key
-        if not os.path.exists(auth.ssh_private_key):
-            msg = 'Private key file "%s" not found' % auth.ssh_private_key
+        private_key_file = os.path.expanduser(auth.ssh_private_key)
+        if not os.path.exists(private_key_file):
+            msg = 'Private key file "%s" not found' % private_key_file
             raise ByrdException(msg)
-        password = get_passphrase(auth.ssh_private_key)
+        password = get_passphrase(private_key_file)
     else:
         password = get_password(host)
 
@@ -331,6 +331,10 @@ def run_batch(task, hosts, cli, global_env=None):
     out = None
     export_env = {}
     task_env = global_env.fmt(task.get('env', {}))
+    if not hosts and task.networks:
+        hosts = list(chain(*(spellcheck(cli.cfg.networks, n).hosts
+                             for n in task.networks)))
+
     if task.get('multi'):
         parent_env = Env(export_env, task_env, global_env)
         parent_sudo = task.sudo
@@ -339,8 +343,7 @@ def run_batch(task, hosts, cli, global_env=None):
             if task_name:
                 # _cfg contain "local" config wrt the task
                 siblings = task._cfg.tasks
-                spellcheck(siblings, task_name)
-                sub_task = siblings[task_name]
+                sub_task = spellcheck(siblings, task_name)
                 sudo = step.sudo or sub_task.sudo or parent_sudo
             else:
                 # reify a task out of attributes
@@ -351,8 +354,7 @@ def run_batch(task, hosts, cli, global_env=None):
             sub_task.sudo = sudo
             network = step.get('network')
             if network:
-                spellcheck(cli.cfg.networks, network)
-                hosts = cli.cfg.networks[network].hosts
+                hosts = spellcheck(cli.cfg.networks, network).hosts
             child_env = step.get('env', {})
             child_env = parent_env.fmt(child_env)
             out = run_batch(sub_task, hosts, cli, Env(child_env, parent_env))
