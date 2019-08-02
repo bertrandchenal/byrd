@@ -1,3 +1,4 @@
+import sys
 from itertools import chain
 from collections import defaultdict, ChainMap
 from contextlib import contextmanager
@@ -94,6 +95,11 @@ def spellcheck(objdict, word):
     if matches:
         msg += ', try: %s' % ' or '.join(matches)
     raise ByrdException(msg)
+
+
+def abort(msg):
+    logger.error(msg)
+    sys.exit(1)
 
 
 class ObjectDict(dict):
