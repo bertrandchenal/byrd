@@ -24,19 +24,19 @@ tasks:
   delete-vm:
      desc: Delete both VM and attached disk
      multi:
-      - task: az-show-disk
+      - task: show-disk
         export: os_disk
         env:
           query: "storageProfile.osDisk.name"
-      - task: az-show-disk
+      - task: show-disk
         export: data_disk
         env:
           query: "storageProfile.dataDisks[0].name"
-      - task: az-delete-vm-only
-      - task: az-delete-disk
+      - task: delete-vm-only
+      - task: delete-disk
         env:
           disk_name: "{data_disk}"
-      - task: az-delete-disk
+      - task: delete-disk
         env:
           disk_name: "{os_disk}"
   show-ip:
@@ -46,6 +46,7 @@ tasks:
        --query "[?virtualMachine.name=='{vm_name}']
        .virtualMachine.network.privateIpAddresses[0]"
      once: true
+     warn: "{stdout}"
   vm-info:
      desc: Query azure vm by name for info
      local: az vm list --query "[?name=='{vm_name}']"
