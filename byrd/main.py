@@ -9,8 +9,8 @@ import posixpath
 import subprocess
 import threading
 
-from config import Task, yaml_load
-from utils import (ByrdException, LocalException, ObjectDict, RemoteException,
+from .config import Task, yaml_load
+from .utils import (ByrdException, LocalException, ObjectDict, RemoteException,
                    DummyClient, Env, spellcheck, spell, logger)
 
 try:

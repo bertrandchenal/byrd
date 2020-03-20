@@ -13,6 +13,6 @@ output: |
   concat
   import os
   print(os.environ['one'], os.environ['two'], os.environ['_'])
-  one two three
+  ('one', 'two', 'three')
   print('nested')
   nested

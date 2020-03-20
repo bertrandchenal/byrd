@@ -3,7 +3,9 @@ from shlex import shlex
 
 import pytest
 
-from byrd.main import run_batch, load_cli, Env
+from byrd.main import run_batch
+from byrd.cli import  load_cli
+from byrd.utils import Env
 
 
 def test_all_conf(test_cfg, log_buff):

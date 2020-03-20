@@ -29,7 +29,7 @@ setup(name='Byrd',
       py_modules=['byrd'],
       entry_points={
           'console_scripts': [
-              'bd = byrd.main:main',
+              'bd = byrd.cli:run',
           ],
       },
       packages=['byrd'],

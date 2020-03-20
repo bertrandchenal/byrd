@@ -1,6 +1,6 @@
 from collections import OrderedDict
 
-from utils import (ByrdException, ObjectDict, spell, gen_candidates)
+from .utils import (ByrdException, ObjectDict, spell, gen_candidates)
 
 
 try:
