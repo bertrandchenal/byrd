@@ -7,4 +7,4 @@ tasks:
       fi
   pull:
     desc: Update codebase
-    run: cd src/prove && git pull
+    run: cd {path} && git pull
